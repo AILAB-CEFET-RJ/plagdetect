@@ -11,7 +11,7 @@ def create_folder(directory):
 def generate_file(c2, c3, doc_id):
 	c2.execute('SELECT id, fragment, isplag FROM sentence where fk_article_id = ? ORDER BY offset', (doc_id,))
 	#if c2.rowcount > 0:
-	with open(os.path.join(directory, 'suspicious-document' + f'{doc_id:05}' + '.txt'), 'w') as f:
+	with open(os.path.join(directory, 'suspicious-document' + f'{doc_id:05}' + '.txt'), 'w', encoding='utf-8') as f:
 		for row in c2:
 			c3.execute('SELECT fragment, isplag FROM sentence where fk_article_id = ? AND id > ? ORDER BY offset', (doc_id, row[0]))
 			for row_ahead in c3:
