@@ -16,7 +16,7 @@ def generate_file(c2, c3, doc_id):
 			c3.execute('SELECT fragment, isplag FROM sentence where fk_article_id = ? AND id > ? ORDER BY offset', (doc_id, row[0]))
 			for row_ahead in c3:
 				same_style = '1' if row[2] == row_ahead[1] else '0'
-				f.write(row[1].strip('\n').strip('\r') + '\t' + row_ahead[0].strip('\n').strip('\r') + '\t' + same_style + '\n')
+				f.write(row[1].replace('\n', '').replace('\r', '') + '\t' + row_ahead[0].replace('\n', '').replace('\r', '') + '\t' + same_style + '\n')
 
 
 if __name__ == '__main__':
