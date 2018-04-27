@@ -19,7 +19,8 @@ def create_tables(c):
 		# Create tables
 		sql = '''CREATE TABLE IF NOT EXISTS article (
 							id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
-							filename TEXT NOT NULL);'''
+							filename TEXT NOT NULL,
+							author TEXT NOT NULL);'''
 		c.execute(sql)
 
 		sql = '''CREATE TABLE IF NOT EXISTS plag (
@@ -41,9 +42,9 @@ def create_tables(c):
 					foreign key (fk_article_id) references article(id));'''
 		c.execute(sql)
 
-def insert_into_article_table(c, f):
-	sql = '''insert into article(filename) values(?)'''
-	c.execute(sql, (f.name,))
+def insert_into_article_table(c, f, author):
+	sql = '''insert into article(filename, author) values(?,?)'''
+	c.execute(sql, (f.name, author))
 	return c.lastrowid
 
 def insert_into_plag_table(c, values):
@@ -72,12 +73,14 @@ def populate_tables(c, tokenizer):
 			xmlfile = txtfile.replace('.txt', '.xml')
 			with open(txtfile, encoding='utf-8-sig', errors='ignore') as f:
 				print(f.name)
-				article_id = insert_into_article_table(c, f)
 				tree = et.parse(xmlfile)
 				root = tree.getroot()
 				plags = []
 				for feature in root:
-					if 'name' in feature.attrib and feature.attrib['name'] == 'plagiarism':
+					if 'authors' in feature.attrib:
+						author = feature.attrib['authors']
+						article_id = insert_into_article_table(c, f, author)
+					elif 'name' in feature.attrib and feature.attrib['name'] == 'plagiarism':
 						offset = int(feature.attrib['this_offset']) #+ 3
 						length = int(feature.attrib['this_length'])
 						plags.append((offset, length))
@@ -90,7 +93,10 @@ def populate_tables(c, tokenizer):
 				for sentence in sentences:
 					insert_into_sentence_table(c, article_id, data, sentence, plags)
 
-
+def create_views(c):
+	# Create view showing all authors and number of articles by each one of them.
+	sql = '''create view articles_per_author as select author, count(author) as number_of_articles from article group by author;'''
+	c.execute(sql)
 
 
 if __name__ == '__main__':
@@ -104,6 +110,7 @@ if __name__ == '__main__':
 
 		create_tables(c)
 		populate_tables(c, tokenizer)
+		create_views(c)
 		db.commit()
 	except lite.Error as e:
 		print("Error %s:" % e.args[0])

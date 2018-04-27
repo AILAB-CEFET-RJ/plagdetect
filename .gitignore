@@ -1,5 +1,7 @@
 *~
+.idea/*
 dataset/*
 dataset-generated/*
-.idea/*
+info/*
+errors/*
 *.db
