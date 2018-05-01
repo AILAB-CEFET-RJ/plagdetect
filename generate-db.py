@@ -18,7 +18,7 @@ def create_tables(c):
 	if c:
 		# Create tables
 		sql = '''CREATE TABLE IF NOT EXISTS article (
-							id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
+							id INTEGER NOT NULL PRIMARY KEY, 
 							filename TEXT NOT NULL,
 							author TEXT NOT NULL);'''
 		c.execute(sql)
@@ -43,8 +43,8 @@ def create_tables(c):
 		c.execute(sql)
 
 def insert_into_article_table(c, f, author):
-	sql = '''insert into article(filename, author) values(?,?)'''
-	c.execute(sql, (f.name, author))
+	sql = '''insert into article(id, filename, author) values(?,?,?)'''
+	c.execute(sql, (int(f.name[-9:-4]), f.name, author))
 	return c.lastrowid
 
 def insert_into_plag_table(c, values):
@@ -53,7 +53,7 @@ def insert_into_plag_table(c, values):
 
 def insert_into_sentence_table(c, article_id, data, sentence, plags):
 	sql = '''insert into sentence (fk_article_id, fragment, offset, length, isplag) values (?,?,?,?,?)'''
-	values = [article_id, sentence, data.index(sentence), len(sentence)]
+	values = [article_id, sentence.replace('\n', ' ').replace('\r', ' '), data.index(sentence), len(sentence)]
 	isplag = 0
 	for plag_section in plags:
 		plag_interval = range(plag_section[0], plag_section[0] + plag_section[1])
@@ -66,12 +66,14 @@ def insert_into_sentence_table(c, article_id, data, sentence, plags):
 
 
 def populate_tables(c, tokenizer):
-	for file in os.listdir('dataset'):
-		txtfile = os.fsdecode(file)
-		txtfile = os.path.join('dataset', txtfile) # Get path that works for Windows and Linux
-		if txtfile.endswith('.txt'):
-			xmlfile = txtfile.replace('.txt', '.xml')
-			with open(txtfile, encoding='utf-8-sig', errors='ignore') as f:
+	filelist = os.listdir('dataset')
+	filelist.sort()
+	for file in filelist:
+		file = os.path.join('dataset', file) # Get path that works for Windows and Linux
+		if file.endswith('.txt'):
+			xmlfile = file.replace('.txt', '.xml')
+			with open(file) as f:
+				data = f.read().decode("utf-8-sig")
 				print(f.name)
 				tree = et.parse(xmlfile)
 				root = tree.getroot()
@@ -84,11 +86,7 @@ def populate_tables(c, tokenizer):
 						offset = int(feature.attrib['this_offset']) #+ 3
 						length = int(feature.attrib['this_length'])
 						plags.append((offset, length))
-						f.seek(offset)
-						data = f.read(length)
-						insert_into_plag_table(c, (article_id, data, offset, length))
-				f.seek(0)
-				data = f.read()
+						insert_into_plag_table(c, (article_id, data[offset:offset+length], offset, length))
 				sentences = tokenizer.tokenize(data)
 				for sentence in sentences:
 					insert_into_sentence_table(c, article_id, data, sentence, plags)
