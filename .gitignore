@@ -5,3 +5,4 @@ dataset-generated/*
 info/*
 errors/*
 *.db
+*-journal
