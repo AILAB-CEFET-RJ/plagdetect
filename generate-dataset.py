@@ -1,5 +1,5 @@
 import sqlite3 as lite
-import os, sys, errno
+import os, sys, errno, codecs
 
 def create_folder(directory):
 	try:
@@ -11,14 +11,14 @@ def create_folder(directory):
 def generate_file(doc_id):
 	c.execute('SELECT id, fragment, isplag FROM sentence where fk_article_id = ? ORDER BY offset', (doc_id,))
 	lines = c.fetchall()
-	with open(os.path.join(directory, 'suspicious-document' + '{:05d}'.format(doc_id) + '.txt'), 'w', encoding='utf-8') as f:
+	with codecs.open(os.path.join(directory, 'suspicious-document' + '{:05d}'.format(doc_id) + '.txt'), 'w', encoding='utf-8') as f:
 		print('Generating %s', f.name)
 		for line in lines:
 			for line_ahead in lines[lines.index(line)+1:]:
 				if line[2] == line_ahead[2] and line[2] == True:
 					continue
 				same_style = '1' if line[2] == line_ahead[2] else '0'
-				f.write(line[1] + '\t' + line_ahead[1] + '\t' + same_style + '\n')
+				f.write('\t'.join([line[1], line_ahead[1], same_style]) + '\n')
 
 
 if __name__ == '__main__':

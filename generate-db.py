@@ -1,6 +1,6 @@
 import sqlite3 as lite
 import xml.etree.ElementTree as et
-import sys, os, errno, codecs
+import sys, os, errno
 import nltk.data
 
 
@@ -12,7 +12,7 @@ def remove(filename):
 		if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
 		 raise # re-raise exception if a different error occurred
 		else:
-			print("Database file does not exist. Proceeding with database creationg.")
+			print("Database file does not exist. Proceeding with database creation.")
 
 def create_tables(c):
 	if c:
