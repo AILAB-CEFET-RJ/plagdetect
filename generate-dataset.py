@@ -8,10 +8,10 @@ def create_folder(directory):
 		if e.errno != errno.EEXIST:
 			raise
 
-def generate_file(f, doc_id):
-	c.execute('SELECT id, fragment, isplag FROM sentence where fk_article_id = ? ORDER BY offset', (doc_id,))
+def generate_file(f, author):
+	c.execute('''SELECT s.id, s.fragment, s.isplag FROM sentence as s INNER JOIN article as a 
+			ON a.id = s.fk_article_id WHERE a.author = ? ORDER BY a.id, s.offset''', (author,))
 	lines = c.fetchall()
-	print('Generating for doc_id ', doc_id)
 	for line in lines:
 		for line_ahead in lines[lines.index(line)+1:]:
 			if line[2] == line_ahead[2] and line[2] == True:
@@ -31,16 +31,19 @@ if __name__ == '__main__':
 	try:
 		db = lite.connect(db_filename)
 		c = db.cursor()
-		sql = 'SELECT DISTINCT fk_article_id FROM sentence'
+		sql = 'SELECT DISTINCT a.author FROM article as a INNER JOIN sentence as s ON a.id = s.fk_article_id'
 		if len(sys.argv) >= 2:
-			sql += ' WHERE fk_article_id >= ' + sys.argv[1]
+			sql += ' LIMIT ' + sys.argv[1]
 		if len(sys.argv) >= 3:
-			sql += ' and fk_article_id <= ' + sys.argv[2]
+			sql += ' OFFSET ' + sys.argv[2]
 		c.execute(sql)
-		article_ids = c.fetchall()
+		authors = c.fetchall()
 		with bz2file.open(os.path.join(directory, 'generated-dataset.bz2'), 'w', 9) as f:
-			for article_id in article_ids:
-				generate_file(f, article_id[0])
+			i = 1
+			for author in authors:
+				print 'Progress: ' + str(i) + '/' + str(len(authors)) + ' authors'
+				generate_file(f, author[0])
+				i += 1
 
 	except lite.Error as e:
 		print("Error %s:" % e.args[0])
