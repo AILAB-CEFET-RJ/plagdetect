@@ -48,10 +48,11 @@ def generate_tuples(c):
 					tuples.append((sentence[0], sentence_ahead[0], same_style))
 			if 'tuples' in f:
 				ds.resize(ds.shape[0]+len(tuples), axis=0)
-				ds[-len(tuples):] = np.array(tuples)
+				new_tuples = np.array(tuples)
+				ds[-len(tuples):] = np.array(new_tuples)
 				print 'New dataset size: ' + str(ds.shape)
 			else:
-				ds = f.create_dataset('tuples', maxshape=(None, 3), dtype=int, data=np.array(tuples))
+				ds = f.create_dataset('tuples', maxshape=(None, 3), dtype=int, chunks=(40000000, 3), data=np.array(tuples))
 	print 'Tuples generated successfully'
 
 
