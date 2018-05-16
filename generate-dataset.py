@@ -14,7 +14,7 @@ def generate_file(f, author):
 	lines = c.fetchall()
 	for line in lines:
 		for line_ahead in lines[lines.index(line)+1:]:
-			if line[2] == line_ahead[2] and line[2] == True:
+			if line[2] == line_ahead[2] and line[2] is True:
 				continue
 			same_style = '1' if line[2] == line_ahead[2] else '0'
 			f.write(('\t'.join([line[1], line_ahead[1], same_style]) + '\n').encode('utf-8'))
