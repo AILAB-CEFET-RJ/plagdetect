@@ -1,9 +1,13 @@
 import sqlite3 as lite
-import os, sys, errno, bz2file, pickle
+import numpy as np
+import os, sys, errno, h5py, pickle, shutil
 
 
 def create_folder():
 	try:
+		if os.path.exists(directory):
+			print 'Deleting existing directory'
+			shutil.rmtree(directory)
 		os.makedirs(directory)
 	except OSError as e:
 		if e.errno != errno.EEXIST:
@@ -27,26 +31,28 @@ def generate_tuples(c):
 	sql = 'SELECT DISTINCT author from article'
 	c.execute(sql)
 	authors = c.fetchall()
-	tuples = []
 	sql = 'SELECT s.id, s.isplag FROM sentence as s INNER JOIN article a ON s.fk_article_id = a.id WHERE author = ?'
 
-	print 'Generating tuples'
-	for author in authors:
-		print 'Progress: ' + str(authors.index(author) + 1) + '/' + str(len(authors))
-		c.execute(sql, author)
-		sentences = c.fetchall()
-		for sentence in sentences:
-			for sentence_ahead in sentences[sentences.index(sentence)+1:]:
-				if sentence[1] == sentence_ahead[1] and sentence[1] is True:
-					continue
-				same_style = True if sentence[1] == sentence_ahead[1] else False
-				tuples.append((sentence[0], sentence_ahead[0], same_style))
-
+	with h5py.File(filename, 'a') as f:
+		print 'Generating tuples'
+		for author in authors:
+			tuples = []
+			print 'Progress: ' + str(authors.index(author) + 1) + '/' + str(len(authors))
+			c.execute(sql, author)
+			sentences = c.fetchall()
+			for sentence in sentences:
+				for sentence_ahead in sentences[sentences.index(sentence)+1:]:
+					if sentence[1] == sentence_ahead[1] and sentence[1] is True:
+						continue
+					same_style = True if sentence[1] == sentence_ahead[1] else False
+					tuples.append((sentence[0], sentence_ahead[0], same_style))
+			if 'tuples' in f:
+				ds.resize(ds.shape[0]+len(tuples), axis=0)
+				ds[-len(tuples):] = np.array(tuples)
+				print 'New dataset size: ' + str(ds.shape)
+			else:
+				ds = f.create_dataset('tuples', maxshape=(None, 3), dtype=int, data=np.array(tuples))
 	print 'Tuples generated successfully'
-	print 'Dumping tuples'
-	with open(filename, 'w') as f:
-		pickle.dump(tuples, f)
-	print 'Tuples dumped successfully'
 
 
 if __name__ == '__main__':
