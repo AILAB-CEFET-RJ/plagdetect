@@ -51,11 +51,12 @@ def generate_tuples(c):
 
 if __name__ == '__main__':
 	global directory
-	create_folder()
 	if len(sys.argv) > 1:
 		directory = sys.argv[1]
 	else:
 		directory = 'dataset-generated2'
+	create_folder()
+
 	db_filename = 'plag.db'
 	db = None
 	try:
