@@ -2,6 +2,7 @@
 .idea/*
 dataset/*
 dataset-generated/*
+dataset-generated2/*
 info/*
 errors/*
 *.db

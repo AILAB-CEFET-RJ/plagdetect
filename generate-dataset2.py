@@ -35,8 +35,8 @@ def generate_tuples(c):
 
 	with h5py.File(filename, 'a') as f:
 		print 'Generating tuples'
+		tuples = []
 		for author in authors:
-			tuples = []
 			print 'Progress: ' + str(authors.index(author) + 1) + '/' + str(len(authors))
 			c.execute(sql, author)
 			sentences = c.fetchall()
@@ -46,13 +46,14 @@ def generate_tuples(c):
 						continue
 					same_style = True if sentence[1] == sentence_ahead[1] else False
 					tuples.append((sentence[0], sentence_ahead[0], same_style))
-			if 'tuples' in f:
-				ds.resize(ds.shape[0]+len(tuples), axis=0)
-				new_tuples = np.array(tuples)
-				ds[-len(tuples):] = np.array(new_tuples)
-				print 'New dataset size: ' + str(ds.shape)
-			else:
-				ds = f.create_dataset('tuples', maxshape=(None, 3), dtype=int, chunks=(40000000, 3), data=np.array(tuples))
+					if len(tuples) == 1048576:
+						if 'tuples' in f:
+							ds.resize(ds.shape[0]+len(tuples), axis=0)
+							ds[-len(tuples):] = np.array(tuples)
+							print 'New dataset size: ' + str(ds.shape)
+						else:
+							ds = f.create_dataset('tuples', maxshape=(None, 3), dtype=int,  data=np.array(tuples), chunks=(10485760, 3), compression="gzip", compression_opts=9)
+						tuples = []
 	print 'Tuples generated successfully'
 
 
