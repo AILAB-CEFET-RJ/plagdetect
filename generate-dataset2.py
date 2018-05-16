@@ -24,7 +24,7 @@ def generate_dictionary(c):
 
 def generate_tuples(c):
 	filename = os.path.join(directory, 'tuples')
-	sql = 'SELECT DISTINCT author from article LIMIT 1'
+	sql = 'SELECT DISTINCT author from article'
 	c.execute(sql)
 	authors = c.fetchall()
 	tuples = []
