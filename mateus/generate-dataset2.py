@@ -58,6 +58,7 @@ def generate_tuples(c):
 
 
 if __name__ == '__main__':
+	os.chdir('../')
 	global directory
 	if len(sys.argv) > 1:
 		directory = sys.argv[1]

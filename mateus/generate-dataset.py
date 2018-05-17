@@ -22,6 +22,7 @@ def generate_file(f, author):
 
 
 if __name__ == '__main__':
+	os.chdir('../')
 	global directory
 	directory = 'dataset-generated'
 	create_folder(directory)

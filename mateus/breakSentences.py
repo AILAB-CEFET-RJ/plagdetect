@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import nltk.data
+import nltk.data, os
+
+os.chdir('../')
 
 # Execute esse comando APENAS UMA VEZ para instalar o pacote punkt do NLTK
 #nltk.download()

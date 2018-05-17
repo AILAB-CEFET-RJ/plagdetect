@@ -1,3 +1,7 @@
+import os
+
+
+os.chdir('../')
 with open('../pan11-intrinsic-plagiarism-detection-test-corpus-2011-05-13/suspicious-documents/suspicious-document03103.txt') as infile:
     lines=0
     words=0

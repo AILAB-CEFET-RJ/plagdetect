@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as et
-import nltk.data
-
+import nltk.data, os
+os.chdir('../')
 textfile = './dataset/suspicious-document00206.txt'
 xmlfile = './dataset/suspicious-document00206.xml'
 

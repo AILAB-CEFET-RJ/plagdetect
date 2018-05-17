@@ -1,6 +1,7 @@
 import sqlite3 as lite
-import sys
+import sys, os
 
+os.chdir('../')
 con = None
 
 try:

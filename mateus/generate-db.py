@@ -114,6 +114,7 @@ def get_ignore_list():
 	]
 
 if __name__ == '__main__':
+	os.chdir('../')
 	db_filename = 'plag.db'
 	remove(db_filename)
 	db = None
