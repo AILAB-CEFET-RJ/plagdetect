@@ -1,6 +1,8 @@
 *~
 .idea/*
 dataset/*
+dataset-mini/*
+dataset-full/*
 dataset-generated/*
 dataset-generated2/*
 info/*

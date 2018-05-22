@@ -21,6 +21,25 @@ def generate_file(f, author):
 	f.flush()
 
 
+def get_author_ids(c):
+	sql = 'SELECT DISTINCT a.id FROM author as a'
+	c.execute(sql)
+
+def get_dataset_by_author_id(c, author_id):
+	sql = '''select s1.fragment, s2.fragment, (s1.isplag = s2.isplag) as same_style FROM
+  					sentence as s1,
+    				sentence as s2 WHERE
+  					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)
+  					AND s1.fk_author_id = ?'''
+	c.execute(sql, author_id)
+
+
+def get_dataset(c):
+	sql = '''select s1.fragment, s2.fragment, (s1.isplag = s2.isplag) as same_style FROM
+  					sentence as s1, sentence as s2 WHERE
+  					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
+	c.execute(sql)
+
 if __name__ == '__main__':
 	os.chdir('../')
 	global directory

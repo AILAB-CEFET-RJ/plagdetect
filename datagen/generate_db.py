@@ -20,7 +20,8 @@ def create_tables(c):
 		sql = '''CREATE TABLE IF NOT EXISTS article (
 							id INTEGER NOT NULL PRIMARY KEY, 
 							filename TEXT NOT NULL,
-							author TEXT NOT NULL);'''
+							fk_author_id INTEGER NOT NULL,
+							foreign key (fk_author_id) references author(id));'''
 		c.execute(sql)
 
 		sql = '''CREATE TABLE IF NOT EXISTS plag (
@@ -35,25 +36,42 @@ def create_tables(c):
 		sql = '''CREATE TABLE IF NOT EXISTS sentence (
 					id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 					fk_article_id INT NOT NULL,
+					fk_author_id INT NOT NULL,
 					fragment TEXT NOT NULL,
 					offset INT NOT NULL,
 					length INT NOT NULL,
 					isplag BOOL NOT NULL,
-					foreign key (fk_article_id) references article(id));'''
+					foreign key (fk_article_id) references article(id),
+					foreign key (fk_author_id) references author(id));'''
 		c.execute(sql)
 
-def insert_into_article_table(c, f, author):
-	sql = '''insert into article(id, filename, author) values(?,?,?)'''
-	c.execute(sql, (int(f.name[-9:-4]), f.name, author))
+		sql = '''CREATE TABLE IF NOT EXISTS author (
+							id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL )'''
+		c.execute(sql)
+
+def insert_into_author_table(c, author):
+	sql = '''select a.id from author as a where a.name = ?'''
+	c.execute(sql, (author,))
+	a = c.fetchall()
+	if not len(a) > 0:
+		sql = '''insert into author(name) values (?)'''
+		c.execute(sql, (author,))
+		return c.lastrowid
+	return a[0][0]
+
+def insert_into_article_table(c, f, author_id):
+	sql = '''insert into article(id, filename, fk_author_id) values(?,?,?)'''
+	c.execute(sql, (int(f.name[-9:-4]), f.name, author_id))
 	return c.lastrowid
 
 def insert_into_plag_table(c, values):
 	sql = '''insert into plag(fk_article_id, fragment, offset, length) values(?,?,?,?)'''
 	c.execute(sql, values)
 
-def insert_into_sentence_table(c, article_id, data, sentence, plags):
-	sql = '''insert into sentence (fk_article_id, fragment, offset, length, isplag) values (?,?,?,?,?)'''
-	values = [article_id, sentence.replace('\n', ' ').replace('\r', ' '), data.index(sentence), len(sentence)]
+def insert_into_sentence_table(c, article_id, author_id, data, sentence, plags):
+	sql = '''insert into sentence (fk_article_id, fk_author_id, fragment, offset, length, isplag) values (?,?,?,?,?,?)'''
+	values = [article_id, author_id, sentence.replace('\n', ' ').replace('\r', ' '), data.index(sentence), len(sentence)]
 	isplag = 0
 	for plag_section in plags:
 		plag_interval = range(plag_section[0], plag_section[0] + plag_section[1])
@@ -81,7 +99,8 @@ def populate_tables(c, tokenizer):
 				for feature in root:
 					if 'authors' in feature.attrib and feature.attrib['authors'] not in ignore_list:
 						author = feature.attrib['authors']
-						article_id = insert_into_article_table(c, f, author)
+						author_id = insert_into_author_table(c, author)
+						article_id = insert_into_article_table(c, f, author_id)
 					elif 'name' in feature.attrib and feature.attrib['name'] == 'plagiarism':
 						offset = int(feature.attrib['this_offset']) #+ 3
 						length = int(feature.attrib['this_length'])
@@ -89,11 +108,17 @@ def populate_tables(c, tokenizer):
 						insert_into_plag_table(c, (article_id, data[offset:offset+length], offset, length))
 				sentences = tokenizer.tokenize(data)
 				for sentence in sentences:
-					insert_into_sentence_table(c, article_id, data, sentence, plags)
+					insert_into_sentence_table(c, article_id, author_id, data, sentence, plags)
 
 def create_views(c):
 	# Create view showing all authors and number of articles by each one of them.
 	sql = '''create view articles_per_author as select author, count(author) as number_of_articles from article group by author;'''
+	c.execute(sql)
+
+def create_indexes(c):
+	sql = '''CREATE INDEX IF NOT EXISTS article_fk_author_id_index ON article (fk_author_id)'''
+	c.execute(sql)
+	sql = '''CREATE INDEX IF NOT EXISTS sentence_fk_author_id_index ON sentence (fk_author_id)'''
 	c.execute(sql)
 
 def get_ignore_list():
@@ -128,6 +153,7 @@ if __name__ == '__main__':
 		create_tables(c)
 		populate_tables(c, tokenizer)
 		create_views(c)
+		create_indexes(c)
 		db.commit()
 	except lite.Error as e:
 		print("Error %s:" % e.args[0])
