@@ -50,7 +50,7 @@ def create_tables(c):
               name TEXT NOT NULL )'''
 		c.execute(sql)
 
-def insert_into_author_table(c, author):
+def insert_into_author_table_if_not_exists(c, author):
 	sql = '''select a.id from author as a where a.name = ?'''
 	c.execute(sql, (author,))
 	a = c.fetchall()
@@ -96,21 +96,21 @@ def populate_tables(c, tokenizer):
 				tree = et.parse(xmlfile)
 				root = tree.getroot()
 				plags = []
-				author_is_on_ignore_list = False;
+				author_is_ignored = False;
 				for feature in root:
 					if 'authors' in feature.attrib:
-						if feature.attrib['authors'] not in ignore_list:
-							author_is_on_ignore_list = True;
+						if feature.attrib['authors'] in ignore_list:
+							author_is_ignored = True;
 							break;
 						author = feature.attrib['authors']
-						author_id = insert_into_author_table(c, author)
+						author_id = insert_into_author_table_if_not_exists(c, author)
 						article_id = insert_into_article_table(c, f, author_id)
 					elif 'name' in feature.attrib and feature.attrib['name'] == 'plagiarism':
 						offset = int(feature.attrib['this_offset']) #+ 3
 						length = int(feature.attrib['this_length'])
 						plags.append((offset, length))
 						insert_into_plag_table(c, (article_id, data[offset:offset+length], offset, length))
-				if not author_is_on_ignore_list:
+				if not author_is_ignored:
 					sentences = tokenizer.tokenize(data)
 					for sentence in sentences:
 						insert_into_sentence_table(c, article_id, author_id, data, sentence, plags)
