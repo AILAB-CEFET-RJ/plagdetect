@@ -96,8 +96,12 @@ def populate_tables(c, tokenizer):
 				tree = et.parse(xmlfile)
 				root = tree.getroot()
 				plags = []
+				author_is_on_ignore_list = False;
 				for feature in root:
-					if 'authors' in feature.attrib and feature.attrib['authors'] not in ignore_list:
+					if 'authors' in feature.attrib:
+						if feature.attrib['authors'] not in ignore_list:
+							author_is_on_ignore_list = True;
+							break;
 						author = feature.attrib['authors']
 						author_id = insert_into_author_table(c, author)
 						article_id = insert_into_article_table(c, f, author_id)
@@ -106,9 +110,10 @@ def populate_tables(c, tokenizer):
 						length = int(feature.attrib['this_length'])
 						plags.append((offset, length))
 						insert_into_plag_table(c, (article_id, data[offset:offset+length], offset, length))
-				sentences = tokenizer.tokenize(data)
-				for sentence in sentences:
-					insert_into_sentence_table(c, article_id, author_id, data, sentence, plags)
+				if not author_is_on_ignore_list:
+					sentences = tokenizer.tokenize(data)
+					for sentence in sentences:
+						insert_into_sentence_table(c, article_id, author_id, data, sentence, plags)
 
 def create_views(c):
 	# Create view showing all authors and number of articles by each one of them.
