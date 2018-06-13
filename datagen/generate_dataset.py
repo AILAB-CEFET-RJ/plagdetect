@@ -25,7 +25,7 @@ def get_author_ids(c):
 	sql = 'SELECT DISTINCT a.id FROM author as a'
 	c.execute(sql)
 
-def get_dataset_by_author_id(c, author_id):
+def get_sentence_dataset_by_author_id(c, author_id):
 	sql = '''select s1.fragment, s2.fragment, (s1.isplag = s2.isplag) as same_style FROM
   					sentence as s1,
     				sentence as s2 WHERE
@@ -33,9 +33,22 @@ def get_dataset_by_author_id(c, author_id):
   					AND s1.fk_author_id = ?'''
 	c.execute(sql, author_id)
 
+def get_id_dataset_by_author_id(c, author_id):
+	sql = '''select s1.id, s2.id, (s1.isplag = s2.isplag) as same_style FROM
+  					sentence as s1,
+    				sentence as s2 WHERE
+  					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)
+  					AND s1.fk_author_id = ?'''
+	c.execute(sql, author_id)
 
-def get_dataset(c):
+def get_sentence_dataset(c):
 	sql = '''select s1.fragment, s2.fragment, (s1.isplag = s2.isplag) as same_style FROM
+  					sentence as s1, sentence as s2 WHERE
+  					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
+	c.execute(sql)
+
+def get_id_dataset(c):
+	sql = '''select s1.id, s2.id, (s1.isplag = s2.isplag) as same_style FROM
   					sentence as s1, sentence as s2 WHERE
   					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
 	c.execute(sql)
