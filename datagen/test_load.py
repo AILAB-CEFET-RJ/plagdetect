@@ -6,4 +6,5 @@ db = lite.connect('../plag.db')
 c = db.cursor()
 hashmap = get_sentences_hashmap(c)
 get_id_dataset(c)
-tuples = c.execute().fetchall()
+tuples = c.execute().fetchall(
+

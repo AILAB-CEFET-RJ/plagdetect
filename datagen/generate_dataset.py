@@ -21,7 +21,6 @@ def generate_file(f, author):
 	f.flush()
 
 def get_sentences_hashmap(c):
-	filename = os.path.join(directory, 'hashmap')
 	sql = 'SELECT id, fragment FROM sentence'
 	c.execute(sql)
 	return dict(c.fetchall())
