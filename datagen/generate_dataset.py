@@ -20,6 +20,12 @@ def generate_file(f, author):
 			f.write(('\t'.join([line[1], line_ahead[1], same_style]) + '\n').encode('utf-8'))
 	f.flush()
 
+def get_sentences_hashmap(c):
+	filename = os.path.join(directory, 'hashmap')
+	sql = 'SELECT id, fragment FROM sentence'
+	c.execute(sql)
+	return dict(c.fetchall())
+
 
 def get_author_ids(c):
 	sql = 'SELECT DISTINCT a.id FROM author as a'
