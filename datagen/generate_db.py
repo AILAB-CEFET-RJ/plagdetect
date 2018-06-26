@@ -125,6 +125,11 @@ def create_views(c):
 	 			(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
 	c.execute(sql)
 
+	sql = '''create view if not exists dataset_sentence as select s1.fragment, s2.fragment, (s1.isplag = s2.isplag) as same_style FROM
+	 			sentence as s1, sentence as s2 WHERE
+	 			(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
+	c.execute(sql)
+
 def create_indexes(c):
 	sql = '''CREATE INDEX IF NOT EXISTS article_fk_author_id_index ON article (fk_author_id)'''
 	c.execute(sql)

@@ -166,13 +166,21 @@ class InputHelper(object):
     
     def getDataSets(self, cursor, max_document_length, percent_dev, batch_size, is_char_based):
         #edited
-        cursor.execute('select * from dataset')
+        cursor.execute('select * from dataset_sentence')
+        tuples = cursor.fetchmany(10)
+        x1_text = np.asarray([i[0] for i in tuples])
+        x2_text = np.asarray([i[1] for i in tuples])
+        y = np.asarray([i[2] for i in tuples])
 
+        print(x1_text)
+        print(x2_text)
+        print(y)
 
-        if is_char_based:
-            x1_text, x2_text, y=self.getTsvDataCharBased(cursor)
-        else:
-            x1_text, x2_text, y=self.getTsvData(cursor)
+        # if is_char_based:
+        #     x1_text, x2_text, y= self.getTsvDataCharBased(cursor)
+        # else:
+        #     x1_text, x2_text, y=self.getTsvData(cursor)
+
         # Build vocabulary
         print("Building vocabulary")
         vocab_processor = MyVocabularyProcessor(max_document_length,min_frequency=0,is_char_based=is_char_based)
@@ -199,7 +207,7 @@ class InputHelper(object):
         x1_train, x1_dev = x1_shuffled[:dev_idx], x1_shuffled[dev_idx:]
         x2_train, x2_dev = x2_shuffled[:dev_idx], x2_shuffled[dev_idx:]
         y_train, y_dev = y_shuffled[:dev_idx], y_shuffled[dev_idx:]
-        print("Train/Dev split for {}: {:d}/{:d}".format(cursor, len(y_train), len(y_dev)))
+        print("Train/Dev split for {}: {:d}/{:d}".format('dataset_id', len(y_train), len(y_dev)))
         sum_no_of_batches = sum_no_of_batches+(len(y_train)//batch_size)
         train_set=(x1_train,x2_train,y_train)
         dev_set=(x1_dev,x2_dev,y_dev)

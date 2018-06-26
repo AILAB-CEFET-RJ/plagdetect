@@ -13,6 +13,7 @@ from siamese_network_semantic import SiameseLSTMw2v
 from tensorflow.contrib import learn
 import gzip
 from random import random
+import sqlite3 as lite
 # Parameters
 # ==================================================
 
@@ -52,8 +53,14 @@ if FLAGS.training_files==None:
 
 max_document_length=15
 inpH = InputHelper()
-train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
+#train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
+#                                                                         FLAGS.batch_size, FLAGS.is_char_based)
+
+db = lite.connect(FLAGS.training_files)
+cursor = db.cursor()
+train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(cursor ,max_document_length, 10,
                                                                          FLAGS.batch_size, FLAGS.is_char_based)
+
 trainableEmbeddings=False
 if FLAGS.is_char_based==True:
     FLAGS.word2vec_model = False

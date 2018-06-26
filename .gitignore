@@ -9,3 +9,6 @@ info/*
 errors/*
 *.db
 *-journal
+deep-siamese-text-similarity-master/runs/*
+*pyc
+.txt*
