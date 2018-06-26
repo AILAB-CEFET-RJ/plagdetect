@@ -164,11 +164,15 @@ class InputHelper(object):
     # ==================================================
     
     
-    def getDataSets(self, training_paths, max_document_length, percent_dev, batch_size, is_char_based):
+    def getDataSets(self, cursor, max_document_length, percent_dev, batch_size, is_char_based):
+        #edited
+        cursor.execute('select * from dataset')
+
+
         if is_char_based:
-            x1_text, x2_text, y=self.getTsvDataCharBased(training_paths)
+            x1_text, x2_text, y=self.getTsvDataCharBased(cursor)
         else:
-            x1_text, x2_text, y=self.getTsvData(training_paths)
+            x1_text, x2_text, y=self.getTsvData(cursor)
         # Build vocabulary
         print("Building vocabulary")
         vocab_processor = MyVocabularyProcessor(max_document_length,min_frequency=0,is_char_based=is_char_based)
@@ -195,7 +199,7 @@ class InputHelper(object):
         x1_train, x1_dev = x1_shuffled[:dev_idx], x1_shuffled[dev_idx:]
         x2_train, x2_dev = x2_shuffled[:dev_idx], x2_shuffled[dev_idx:]
         y_train, y_dev = y_shuffled[:dev_idx], y_shuffled[dev_idx:]
-        print("Train/Dev split for {}: {:d}/{:d}".format(training_paths, len(y_train), len(y_dev)))
+        print("Train/Dev split for {}: {:d}/{:d}".format(cursor, len(y_train), len(y_dev)))
         sum_no_of_batches = sum_no_of_batches+(len(y_train)//batch_size)
         train_set=(x1_train,x2_train,y_train)
         dev_set=(x1_dev,x2_dev,y_dev)

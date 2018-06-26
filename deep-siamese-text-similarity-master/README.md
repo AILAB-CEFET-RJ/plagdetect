@@ -1,3 +1,5 @@
+**Forked from https://github.com/dhwajraj/deep-siamese-text-similarity**
+
 **This project is a prototype for experimental purposes only and production grade code is not released here.**
 
 # Deep LSTM siamese network for text similarity
