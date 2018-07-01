@@ -7,7 +7,8 @@ The Deep LSTM network for text similarity was found at [this repository](https:/
 
 ## Useful commands
 
-Create conda environtment: 
+Create conda environtment:
+
 ```conda install -n siamese python=2.7 numpy=1.11.0 tensorflow-gpu=1.2.1 gensim=1.0.1 nltk=3.2.2 h5py```
 
 If you want to train using your processor or your machine has no GPU, install `tensorflow=1.2.1` instead.
