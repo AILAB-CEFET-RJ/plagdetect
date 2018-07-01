@@ -14,14 +14,20 @@ Create conda environtment:
 If you want to train using your processor or your machine has no GPU, install `tensorflow=1.2.1` instead.
 Remember to activate the environment once it is created using `source activate siamese`.
 
+---
+
 Create database:
 
 ```python generate_db.py```
 
-Run this command under the root directory of the project.
+Run this command under the root directory of the project. Make sure to have the documents that will be used in your dataset
+inside the **dataset** folder.
 
-Run: 
+---
+
+Train neural network: 
 
 ```python train.py is_char_based=False --training_files=../plag.db```
 
-Make sure to run this command under **deep_siamese_text_similarities** folder.
+Make sure to run this command under **deep_siamese_text_similarities** folder. The database must have been
+generated already for this code to work.
