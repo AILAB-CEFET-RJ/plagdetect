@@ -59,7 +59,7 @@ inpH = InputHelper()
 db = lite.connect(FLAGS.training_files)
 cursor = db.cursor()
 train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(cursor ,max_document_length, 10,
-                                                                         FLAGS.batch_size, FLAGS.is_char_based)
+                                                                         FLAGS.batch_size, FLAGS.is_char_based, 10)
 
 trainableEmbeddings=False
 if FLAGS.is_char_based==True:
