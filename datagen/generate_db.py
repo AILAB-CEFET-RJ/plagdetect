@@ -100,8 +100,8 @@ def populate_tables(c, tokenizer):
 				for feature in root:
 					if 'authors' in feature.attrib:
 						if feature.attrib['authors'] in ignore_list:
-							author_is_ignored = True;
-							break;
+							author_is_ignored = True
+							break
 						author = feature.attrib['authors']
 						author_id = insert_into_author_table_if_not_exists(c, author)
 						article_id = insert_into_article_table(c, f, author_id)
