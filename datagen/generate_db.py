@@ -84,10 +84,10 @@ def insert_into_sentence_table(c, article_id, author_id, data, sentence, plags):
 
 
 def populate_tables(c, tokenizer):
-	filelist = os.listdir('dataset')
+	filelist = os.listdir('dataset-sample')
 	filelist.sort()
 	for file in filelist:
-		file = os.path.join('dataset', file) # Get path that works for Windows and Linux
+		file = os.path.join('dataset-sample', file) # Get path that works for Windows and Linux
 		if file.endswith('.txt'):
 			xmlfile = file.replace('.txt', '.xml')
 			with codecs.open(file, encoding='utf-8-sig') as f:
@@ -155,7 +155,7 @@ def get_ignore_list():
 
 if __name__ == '__main__':
 	os.chdir('../')
-	db_filename = 'plag.db'
+	db_filename = 'plag-sample.db'
 	remove(db_filename)
 	db = None
 	global ignore_list

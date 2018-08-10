@@ -14,6 +14,7 @@ from tensorflow.contrib import learn
 import gzip
 from random import random
 import sqlite3 as lite
+import sys
 # Parameters
 # ==================================================
 
@@ -51,14 +52,16 @@ if FLAGS.training_files==None:
     exit()
 
 
-max_document_length=15
+#max_document_length=15
+max_document_length=sys.maxint # attempt to read all words in a document
 inpH = InputHelper()
 #train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
 #                                                                         FLAGS.batch_size, FLAGS.is_char_based)
 
 db = lite.connect(FLAGS.training_files)
 cursor = db.cursor()
-train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(cursor ,max_document_length, 10,
+hashmap = inpH.getEmbeddingsMap(cursor)
+train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.myGetDataSets(cursor ,max_document_length, 10,
                                                                          FLAGS.batch_size, FLAGS.is_char_based, 10)
 
 trainableEmbeddings=False
@@ -235,8 +238,8 @@ with tf.Graph().as_default():
         return accuracy
 
     # Generate batches
-    batches=inpH.batch_iter(
-                list(zip(train_set[0], train_set[1], train_set[2])), FLAGS.batch_size, FLAGS.num_epochs)
+    batches=inpH.batch_batch_iter(
+                list(zip(train_set[0], train_set[1], train_set[2])), 128, FLAGS.batch_size, FLAGS.num_epochs)
 
     ptr=0
     max_validation_acc=0.0
@@ -252,7 +255,7 @@ with tf.Graph().as_default():
         sum_acc=0.0
         if current_step % FLAGS.evaluate_every == 0:
             print("\nEvaluation:")
-            dev_batches = inpH.batch_iter(list(zip(dev_set[0],dev_set[1],dev_set[2])), FLAGS.batch_size, 1)
+            dev_batches = inpH.batch_batch_iter(list(zip(dev_set[0],dev_set[1],dev_set[2])), 128, FLAGS.batch_size, 1)
             for db in dev_batches:
                 if len(db)<1:
                     continue

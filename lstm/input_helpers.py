@@ -12,6 +12,9 @@ from random import random
 from preprocess import MyVocabularyProcessor
 import sys
 
+sys.path.append('../datagen')
+from datagen.generate_dataset import get_sentences_hashmap
+
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
@@ -126,6 +129,7 @@ class InputHelper(object):
 
 	def batch_batch_iter(self, cursor, number_of_samples, batch_size, num_epochs):
 		cursor.execute('select * from dataset_sentence')
+		print cursor.rowcount
 		tuples = cursor.fetchmany(number_of_samples)
 		for epoch in range(num_epochs):
 			while len(tuples) > 0:
@@ -190,10 +194,48 @@ class InputHelper(object):
 		del x1_dev
 		del y_dev
 
-	# Data Preparatopn
+	# Data Preparatoin
 	# ==================================================
 
-	def getDataSets(self, cursor, max_document_length, percent_dev, batch_size, is_char_based, number_of_samples):
+	def getDataSets(self, training_paths, max_document_length, percent_dev, batch_size, is_char_based):
+		if is_char_based:
+			x1_text, x2_text, y = self.getTsvDataCharBased(training_paths)
+		else:
+			x1_text, x2_text, y = self.getTsvData(training_paths)
+		# Build vocabulary
+		print("Building vocabulary")
+		vocab_processor = MyVocabularyProcessor(max_document_length, min_frequency=0, is_char_based=is_char_based)
+		vocab_processor.fit_transform(np.concatenate((x2_text, x1_text), axis=0))
+		print("Length of loaded vocabulary ={}".format(len(vocab_processor.vocabulary_)))
+		i1 = 0
+		train_set = []
+		dev_set = []
+		sum_no_of_batches = 0
+		x1 = np.asarray(list(vocab_processor.transform(x1_text)))
+		x2 = np.asarray(list(vocab_processor.transform(x2_text)))
+		# Randomly shuffle data
+		np.random.seed(131)
+		shuffle_indices = np.random.permutation(np.arange(len(y)))
+		x1_shuffled = x1[shuffle_indices]
+		x2_shuffled = x2[shuffle_indices]
+		y_shuffled = y[shuffle_indices]
+		dev_idx = -1 * len(y_shuffled) * percent_dev // 100
+		del x1
+		del x2
+		# Split train/test set
+		self.dumpValidation(x1_text, x2_text, y, shuffle_indices, dev_idx, 0)
+		# TODO: This is very crude, should use cross-validation
+		x1_train, x1_dev = x1_shuffled[:dev_idx], x1_shuffled[dev_idx:]
+		x2_train, x2_dev = x2_shuffled[:dev_idx], x2_shuffled[dev_idx:]
+		y_train, y_dev = y_shuffled[:dev_idx], y_shuffled[dev_idx:]
+		print("Train/Dev split for {}: {:d}/{:d}".format(training_paths, len(y_train), len(y_dev)))
+		sum_no_of_batches = sum_no_of_batches + (len(y_train) // batch_size)
+		train_set = (x1_train, x2_train, y_train)
+		dev_set = (x1_dev, x2_dev, y_dev)
+		gc.collect()
+		return train_set, dev_set, vocab_processor, sum_no_of_batches
+
+	def myGetDataSets(self, cursor, max_document_length, percent_dev, batch_size, is_char_based, number_of_samples):
 		# edited
 		cursor.execute('select * from dataset_sentence')
 		tuples = cursor.fetchmany(number_of_samples)
@@ -204,11 +246,6 @@ class InputHelper(object):
 		print(x1_text)
 		print(x2_text)
 		print(y)
-
-		# if is_char_based:
-		#     x1_text, x2_text, y= self.getTsvDataCharBased(cursor)
-		# else:
-		#     x1_text, x2_text, y=self.getTsvData(cursor)
 
 		# Build vocabulary
 		print("Building vocabulary")
@@ -257,3 +294,19 @@ class InputHelper(object):
 		del vocab_processor
 		gc.collect()
 		return x1, x2, y
+
+	def getEmbeddingsMap(self, cursor):
+		print('Loading sentences')
+		hashmap = get_sentences_hashmap(cursor)
+		# Build vocabulary
+		print("Building vocabulary")
+		vocab_processor = MyVocabularyProcessor(sys.maxint, min_frequency=0, is_char_based=False)
+		vocab_processor.fit_transform(np.asarray(hashmap.values()))
+		print("Length of loaded vocabulary ={}".format(len(vocab_processor.vocabulary_)))
+
+		embeddings = np.asarray(list(vocab_processor.transform(hashmap.values())))
+		print 'Carai...'
+
+		gc.collect()
+		return hashmap
+
