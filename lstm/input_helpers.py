@@ -295,17 +295,16 @@ class InputHelper(object):
 		gc.collect()
 		return x1, x2, y
 
-	def getEmbeddingsMap(self, cursor):
+	def getEmbeddingsMap(self, cursor, max_document_length):
 		print('Loading sentences')
 		hashmap = get_sentences_hashmap(cursor)
 		# Build vocabulary
 		print("Building vocabulary")
-		vocab_processor = MyVocabularyProcessor(sys.maxint, min_frequency=0, is_char_based=False)
+		vocab_processor = MyVocabularyProcessor(max_document_length, min_frequency=0, is_char_based=False)
 		vocab_processor.fit_transform(np.asarray(hashmap.values()))
 		print("Length of loaded vocabulary ={}".format(len(vocab_processor.vocabulary_)))
 
 		embeddings = np.asarray(list(vocab_processor.transform(hashmap.values())))
-		print 'Carai...'
 
 		gc.collect()
 		return hashmap

@@ -52,15 +52,15 @@ if FLAGS.training_files==None:
     exit()
 
 
-#max_document_length=15
-max_document_length=sys.maxint # attempt to read all words in a document
+max_document_length=15
+#max_document_length=sys.maxint # attempt to read all words in a document
 inpH = InputHelper()
 #train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
 #                                                                         FLAGS.batch_size, FLAGS.is_char_based)
 
 db = lite.connect(FLAGS.training_files)
 cursor = db.cursor()
-hashmap = inpH.getEmbeddingsMap(cursor)
+hashmap = inpH.getEmbeddingsMap(cursor, max_document_length)
 train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.myGetDataSets(cursor ,max_document_length, 10,
                                                                          FLAGS.batch_size, FLAGS.is_char_based, 10)
 
