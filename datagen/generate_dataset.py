@@ -25,6 +25,11 @@ def get_sentences_hashmap(c):
 	c.execute(sql)
 	return dict(c.fetchall())
 
+def get_sentences_list(c):
+	sql = 'SELECT id, fragment FROM sentence'
+	c.execute(sql)
+	return c.fetchall()
+
 def get_id_dataset_size():
 	sql = '''select count(*) from (select s1.id, s2.id, (s1.isplag = s2.isplag) as same_style FROM
 	  					sentence as s1, sentence as s2 WHERE

@@ -12,8 +12,8 @@ from random import random
 from preprocess import MyVocabularyProcessor
 import sys
 
-sys.path.append('../datagen')
-from datagen.generate_dataset import get_sentences_hashmap
+sys.path.append('../')
+from datagen.generate_dataset import get_sentences_list
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -297,15 +297,16 @@ class InputHelper(object):
 
 	def getEmbeddingsMap(self, cursor, max_document_length):
 		print('Loading sentences')
-		hashmap = get_sentences_hashmap(cursor)
+		ids, sentences = map(list, zip(*get_sentences_list(cursor)))
 		# Build vocabulary
 		print("Building vocabulary")
 		vocab_processor = MyVocabularyProcessor(max_document_length, min_frequency=0, is_char_based=False)
-		vocab_processor.fit_transform(np.asarray(hashmap.values()))
+		sentences_array = np.asarray(sentences) # line in which memory error occurs with full list of datasets (size = 6620242)
+		vocab_processor.fit_transform(sentences_array)
 		print("Length of loaded vocabulary ={}".format(len(vocab_processor.vocabulary_)))
 
-		embeddings = np.asarray(list(vocab_processor.transform(hashmap.values())))
+		embeddings = np.asarray(list(vocab_processor.transform(sentences_array)))
 
 		gc.collect()
-		return hashmap
+		return dict(ids, embeddings)
 
