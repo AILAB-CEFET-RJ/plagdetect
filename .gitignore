@@ -3,12 +3,13 @@
 dataset/*
 dataset-mini/*
 dataset-full/*
+dataset-sample/*
 dataset-generated/*
 dataset-generated2/*
 info/*
 errors/*
+lstm/runs/*
 *.db
 *-journal
-deep-siamese-text-similarity-master/runs/*
-*pyc
-.txt*
+*.pyc
+
