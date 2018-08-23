@@ -83,11 +83,11 @@ def insert_into_sentence_table(c, article_id, author_id, data, sentence, plags):
 
 
 
-def populate_tables(c, tokenizer):
-	filelist = os.listdir('dataset-sample')
+def populate_tables(c, tokenizer, datafolder):
+	filelist = os.listdir(datafolder)
 	filelist.sort()
 	for file in filelist:
-		file = os.path.join('dataset-sample', file) # Get path that works for Windows and Linux
+		file = os.path.join(datafolder, file) # Get path that works for Windows and Linux
 		if file.endswith('.txt'):
 			xmlfile = file.replace('.txt', '.xml')
 			with codecs.open(file, encoding='utf-8-sig') as f:
@@ -153,9 +153,35 @@ def get_ignore_list():
 
 	]
 
+def help():
+	print('''
+------------------------------------------------------------------------------------------------------------------------
+Usage: \tgenerate-db.py [database file] [dataset folder]
+
+database file:\tpath where database should be created.\t(default = plag.db)
+dataset folder:\tpath to folder containing dataset.\t(default = dataset)
+
+Note: all paths must be relative to the parent folder of this script.
+------------------------------------------------------------------------------------------------------------------------
+	''')
+
 if __name__ == '__main__':
 	os.chdir('../')
-	db_filename = 'plag-sample.db'
+
+	if len(sys.argv) > 3:
+		help()
+		raise ValueError('Invalid number of arguments. Received: ' + str(len(sys.argv)-1) + ' Expected: 2')
+	if len(sys.argv) > 1:
+		db_filename = sys.argv[1]
+	else:
+		db_filename = 'plag.db'
+
+	if len(sys.argv) > 2:
+		datafolder = sys.argv[2]
+	else:
+		datafolder = 'dataset'
+
+	print('Data base will be generated at ')
 	remove(db_filename)
 	db = None
 	global ignore_list
@@ -166,7 +192,7 @@ if __name__ == '__main__':
 		tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 
 		create_tables(c)
-		populate_tables(c, tokenizer)
+		populate_tables(c, tokenizer, datafolder)
 		create_views(c)
 		create_indexes(c)
 		db.commit()
