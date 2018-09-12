@@ -60,9 +60,9 @@ inpH = InputHelper()
 
 db = lite.connect(FLAGS.training_files)
 cursor = db.cursor()
-hashmap = inpH.getEmbeddingsMap(cursor, max_document_length)
-train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.myGetDataSets(cursor ,max_document_length, 10,
-                                                                         FLAGS.batch_size, FLAGS.is_char_based, 10)
+hashmap, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
+train_set, dev_set, sum_no_of_batches = inpH.myGetDataSets(cursor ,max_document_length, 10,
+                                                                         FLAGS.batch_size, FLAGS.is_char_based, 1000)
 
 trainableEmbeddings=False
 if FLAGS.is_char_based==True:

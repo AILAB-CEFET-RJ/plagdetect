@@ -13,7 +13,7 @@ from preprocess import MyVocabularyProcessor
 import sys
 
 sys.path.append('../')
-from datagen.generate_dataset import get_sentences_list
+import datagen
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -297,7 +297,7 @@ class InputHelper(object):
 
 	def getEmbeddingsMap(self, cursor, max_document_length):
 		print('Loading sentences')
-		ids, sentences = map(list, zip(*get_sentences_list(cursor)))
+		ids, sentences = map(list, zip(*datagen.get_sentences_list(cursor)))
 		# Build vocabulary
 		print("Building vocabulary")
 		vocab_processor = MyVocabularyProcessor(max_document_length, min_frequency=0, is_char_based=False)
@@ -308,5 +308,5 @@ class InputHelper(object):
 		embeddings = np.asarray(list(vocab_processor.transform(sentences_array)))
 
 		gc.collect()
-		return dict(ids, embeddings)
+		return dict(zip(ids, embeddings)), vocab_processor
 

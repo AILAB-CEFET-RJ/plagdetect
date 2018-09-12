@@ -120,12 +120,12 @@ def create_views(c):
 	sql = '''create view articles_per_author as select author, count(author) as number_of_articles from article group by author;'''
 	c.execute(sql)
 
-	sql = '''create view if not exists dataset_id as select s1.id, s2.id, (s1.isplag = s2.isplag) as same_style FROM
+	sql = '''create view if not exists dataset_id as select s1.id, s2.id, (s1.isplag AND s2.isplag) as same_style FROM
 	 			sentence as s1, sentence as s2 WHERE 
 	 			(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
 	c.execute(sql)
 
-	sql = '''create view if not exists dataset_sentence as select s1.fragment, s2.fragment, (s1.isplag = s2.isplag) as same_style FROM
+	sql = '''create view if not exists dataset_sentence as select s1.fragment, s2.fragment, (s1.isplag AND s2.isplag) as same_style FROM
 	 			sentence as s1, sentence as s2 WHERE
 	 			(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
 	c.execute(sql)
