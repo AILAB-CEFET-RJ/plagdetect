@@ -75,7 +75,7 @@ def insert_into_sentence_table(c, article_id, author_id, data, sentence, plags):
 	isplag = 0
 	for plag_section in plags:
 		plag_interval = range(plag_section[0], plag_section[0] + plag_section[1])
-		if values[2] in plag_interval and values[2]+values[3] in plag_interval:
+		if values[3] in plag_interval:
 			isplag = 1
 			break
 	values.append(isplag)
