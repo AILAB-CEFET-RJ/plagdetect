@@ -13,7 +13,7 @@ from preprocess import MyVocabularyProcessor
 import sys
 
 sys.path.append('../')
-import datagen
+import datagen.generate_dataset as datagen
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
