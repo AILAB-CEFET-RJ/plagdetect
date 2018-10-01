@@ -301,11 +301,12 @@ class InputHelper(object):
 		# Build vocabulary
 		print("Building vocabulary")
 		vocab_processor = MyVocabularyProcessor(max_document_length, min_frequency=0, is_char_based=False)
-		sentences_array = np.asarray(sentences) # line in which memory error occurs with full list of datasets (size = 6620242)
-		vocab_processor.fit_transform(sentences_array)
+		#sentences_array = np.asarray(sentences) # line in which memory error occurs with full list of datasets (size = 6620242)
+		vocab_processor.fit_transform(sentences)
 		print("Length of loaded vocabulary ={}".format(len(vocab_processor.vocabulary_)))
-
-		embeddings = np.asarray(list(vocab_processor.transform(sentences_array)))
+		print('Vocabulary created!')
+		embeddings = np.asarray(list(vocab_processor.transform(sentences)))
+		print('Embeddings generated in memory!')
 
 		gc.collect()
 		return dict(zip(ids, embeddings)), vocab_processor
