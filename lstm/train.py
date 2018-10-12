@@ -18,7 +18,7 @@ import sys
 # Parameters
 # ==================================================
 
-tf.flags.DEFINE_boolean("is_char_based", True, "is character based syntactic similarity. "
+tf.flags.DEFINE_boolean("is_char_based", False, "is character based syntactic similarity. "
                                                "if false then word embedding based semantic similarity is used."
                                                "(default: True)")
 
