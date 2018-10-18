@@ -12,4 +12,5 @@ lstm/runs/*
 *.db
 *-journal
 *.pyc
-
+*.vec
+*.txt*

@@ -7,15 +7,17 @@ import time
 import datetime
 from tensorflow.contrib import learn
 from input_helpers import InputHelper
+import sklearn.metrics as sk
+
 # Parameters
 # ==================================================
 
 # Eval Parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
-tf.flags.DEFINE_string("checkpoint_dir", "", "Checkpoint directory from training run")
+tf.flags.DEFINE_string("checkpoint_dir", "runs/1539821895/checkpoints/", "Checkpoint directory from training run")
 tf.flags.DEFINE_string("eval_filepath", "validation.txt0", "Evaluate on this data (Default: None)")
-tf.flags.DEFINE_string("vocab_filepath", "runs/1512222837/checkpoints/vocab", "Load training time vocabulary (Default: None)")
-tf.flags.DEFINE_string("model", "runs/1512222837/checkpoints/model-5000", "Load trained model checkpoint (Default: None)")
+tf.flags.DEFINE_string("vocab_filepath", "runs/1539821895/checkpoints/vocab", "Load training time vocabulary (Default: None)")
+tf.flags.DEFINE_string("model", "runs/1539821895/checkpoints/model-4000", "Load trained model checkpoint (Default: None)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -86,3 +88,11 @@ with graph.as_default():
             print ex 
         correct_predictions = float(np.mean(all_d == y_test))
         print("Accuracy: {:g}".format(correct_predictions))
+
+        #y_true = np.argmax(all_y)
+        print "Precision", sk.precision_score(y_test, all_d)
+        print "Recall", sk.recall_score(y_test, all_d)
+        print "f1_score", sk.f1_score(y_test, all_d)
+        print "confusion_matrix"
+        print sk.confusion_matrix(y_test, all_d)
+        fpr, tpr, tresholds = sk.roc_curve(y_test, all_d)
