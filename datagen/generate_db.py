@@ -2,6 +2,7 @@ import sqlite3 as lite
 import xml.etree.ElementTree as et
 import sys, os, errno, codecs
 import nltk.data
+from datagen import dev_train_sep
 
 
 def remove(filename):
@@ -158,10 +159,11 @@ def get_ignore_list():
 def help():
 	print('''
 ------------------------------------------------------------------------------------------------------------------------
-Usage: \tgenerate-db.py [database file] [dataset folder]
+Usage: \tgenerate-db.py [database file] [dataset folder] [create dataset]
 
 database file:\tpath where database should be created.\t(default = plag.db)
 dataset folder:\tpath to folder containing dataset.\t(default = dataset)
+create dataset:\tenable table creations for train and dev datasets.\t(default = create)
 
 Note: all paths must be relative to the parent folder of this script.
 ------------------------------------------------------------------------------------------------------------------------
@@ -170,9 +172,10 @@ Note: all paths must be relative to the parent folder of this script.
 if __name__ == '__main__':
 	os.chdir('../')
 
-	if len(sys.argv) > 3:
+	if len(sys.argv) > 4:
 		help()
 		raise ValueError('Invalid number of arguments. Received: ' + str(len(sys.argv)-1) + ' Expected: 2')
+
 	if len(sys.argv) > 1:
 		db_filename = sys.argv[1]
 	else:
@@ -182,6 +185,11 @@ if __name__ == '__main__':
 		datafolder = sys.argv[2]
 	else:
 		datafolder = 'dataset'
+
+	if len(sys.argv) > 3:
+		split_dataset = sys.argv[3]
+	else:
+		split_dataset = 'create'
 
 	print('Data base will be generated at ')
 	remove(db_filename)
@@ -197,6 +205,11 @@ if __name__ == '__main__':
 		populate_tables(c, tokenizer, datafolder)
 		create_views(c)
 		create_indexes(c)
+
+		if split_dataset == 'create':
+			c2 = db.cursor()
+			dev_train_sep.separate(c, c2, 100000)
+
 		db.commit()
 	except lite.Error as e:
 		print("Error %s:" % e.args[0])

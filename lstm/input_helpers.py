@@ -3,7 +3,7 @@ import re
 import itertools
 from collections import Counter
 import numpy as np
-import time
+import time, memory_profiler as mem_profile
 import gc
 from tensorflow.contrib import learn
 from gensim.models.word2vec import Word2Vec
@@ -237,15 +237,21 @@ class InputHelper(object):
 
 	def myGetDataSets(self, cursor, max_document_length, percent_dev, batch_size, is_char_based, number_of_samples):
 		# edited
+		start_time = time.time()
 		cursor.execute('select * from dataset_sentence')
+		end_time = time.time()
+		print('Time elapsed on running select all: {} seconds.'.format(round(end_time-start_time, 2)))
+
+
+		start_time = time.time()
 		tuples = cursor.fetchmany(number_of_samples)
+		end_time = time.time()
+		print('Time elapsed on fetching {} lines: {} seconds.'.format(number_of_samples, round(end_time-start_time, 2)))
+
+
 		x1_text = np.asarray([i[0] for i in tuples])
 		x2_text = np.asarray([i[1] for i in tuples])
 		y = np.asarray([i[2] for i in tuples])
-
-		print(x1_text)
-		print(x2_text)
-		print(y)
 
 		# Build vocabulary
 		print("Building vocabulary")
@@ -297,17 +303,80 @@ class InputHelper(object):
 
 	def getEmbeddingsMap(self, cursor, max_document_length):
 		print('Loading sentences')
+		print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
 		ids, sentences = map(list, zip(*datagen.get_sentences_list(cursor)))
+		print('Memory (after): {}Mb\n'.format(mem_profile.memory_usage()))
+
 		# Build vocabulary
 		print("Building vocabulary")
 		vocab_processor = MyVocabularyProcessor(max_document_length, min_frequency=0, is_char_based=False)
 		#sentences_array = np.asarray(sentences) # line in which memory error occurs with full list of datasets (size = 6620242)
+
+		print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
+		start_time = time.time()
 		vocab_processor.fit_transform(sentences)
+		end_time = time.time()
+		print('Time elapsed on vocabulary fitting (fit_transform): {} seconds.'.format(round(end_time-start_time, 2)))
+		print('Memory (after): {}Mb'.format(mem_profile.memory_usage()))
+
 		print("Length of loaded vocabulary ={}".format(len(vocab_processor.vocabulary_)))
-		print('Vocabulary created!')
+		print('Vocabulary created!\n')
+
+		print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
+		start_time = time.time()
 		embeddings = np.asarray(list(vocab_processor.transform(sentences)))
+		end_time = time.time()
+		print('Time elapsed on sentences to word ids (transform): {} seconds.'.format(round(end_time-start_time, 2)))
+		print('Memory (after): {}Mb\n'.format(mem_profile.memory_usage()))
+
 		print('Embeddings generated in memory!')
 
 		gc.collect()
 		return dict(zip(ids, embeddings)), vocab_processor
 
+	def my_train_batch(self, cursor, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
+		num_batches_per_epoch = int(total_size/batch_size) + 1
+
+		for epoch in range(num_epochs):
+			#sets cursor
+			cursor.execute('select * from dataset_train')
+
+			for batch_num in range(num_batches_per_epoch):
+				# fetches batch_size rows from dataset, replacing ids for embeddings
+				data = self.ids_to_embeddings(embeddings_map, cursor.fetchmany(batch_size))
+
+				# Shuffle the data at each epoch
+				if shuffle:
+					shuffle_indices = np.random.permutation(np.arange(batch_size))
+					shuffled_data = data[shuffle_indices]
+				else:
+					shuffled_data = data
+
+				yield shuffled_data
+
+	def my_dev_batch(self, cursor, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
+		num_batches_per_epoch = int(total_size/batch_size) + 1
+
+		for epoch in range(num_epochs):
+			#sets cursor
+			cursor.execute('select * from dataset_train')
+
+			for batch_num in range(num_batches_per_epoch):
+				# fetches batch_size rows from dataset, replacing ids for embeddings
+				data = self.ids_to_embeddings(embeddings_map, cursor.fetchmany(batch_size))
+
+				# Shuffle the data at each epoch
+				if shuffle:
+					shuffle_indices = np.random.permutation(np.arange(batch_size))
+					shuffled_data = data[shuffle_indices]
+				else:
+					shuffled_data = data
+
+				yield shuffled_data
+
+	def ids_to_embeddings(self, emb_map, rows):
+		x1, x2, y = zip(*rows)
+		for i in range(len(y)):
+			x1[i] = emb_map[x1[i]]
+			x2[i] = emb_map[x2[i]]
+		return zip(x1, x2, y)
