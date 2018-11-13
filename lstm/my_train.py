@@ -58,11 +58,22 @@ inpH = InputHelper()
 #train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
 #                                                                         FLAGS.batch_size, FLAGS.is_char_based)
 
+batch_size = FLAGS.batch_size
+num_epochs = FLAGS.num_epochs
+
 db = lite.connect(FLAGS.training_files)
 cursor = db.cursor()
-hashmap, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
-train_set, dev_set, sum_no_of_batches = inpH.myGetDataSets(cursor ,max_document_length, 10,
-                                                                         FLAGS.batch_size, FLAGS.is_char_based, 1000)
+emb_map, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
+train_count, dev_count = inpH.my_get_counts(cursor)
+
+train_set = inpH.my_train_batch(cursor, emb_map, train_count, FLAGS.batch_size, num_epochs)
+sum_no_of_batches = train_count // batch_size + 1
+
+dev_set = inpH.my_dev_batch(cursor, emb_map, dev_count, FLAGS.batch_size, num_epochs)
+dev_no_of_batches = dev_count // batch_size + 1
+
+# train_set, dev_set, sum_no_of_batches = inpH.myGetDataSets(cursor ,max_document_length, 10,
+#                                                                          FLAGS.batch_size, FLAGS.is_char_based, 1000)
 
 trainableEmbeddings=False
 if FLAGS.is_char_based==True:
@@ -210,7 +221,7 @@ with tf.Graph().as_default():
         time_str = datetime.datetime.now().isoformat()
         print("TRAIN {}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
         train_summary_writer.add_summary(summaries, step)
-        print(y_batch, dist, sim)
+        # print(y_batch, dist, sim)
 
     def dev_step(x1_batch, x2_batch, y_batch):
         """
@@ -234,13 +245,14 @@ with tf.Graph().as_default():
         time_str = datetime.datetime.now().isoformat()
         print("DEV {}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
         dev_summary_writer.add_summary(summaries, step)
-        print (y_batch, sim)
+        # print (y_batch, sim)
         return accuracy
 
     # Generate batches
-    batches=inpH.batch_batch_iter(
-                list(zip(train_set[0], train_set[1], train_set[2])), 128, FLAGS.batch_size, FLAGS.num_epochs)
+    # batches=inpH.batch_batch_iter(
+    #             list(zip(train_set[0], train_set[1], train_set[2])), 128, FLAGS.batch_size, FLAGS.num_epochs)
 
+    batches = train_set
     ptr=0
     max_validation_acc=0.0
     for nn in xrange(sum_no_of_batches*FLAGS.num_epochs):
@@ -255,7 +267,8 @@ with tf.Graph().as_default():
         sum_acc=0.0
         if current_step % FLAGS.evaluate_every == 0:
             print("\nEvaluation:")
-            dev_batches = inpH.batch_batch_iter(list(zip(dev_set[0],dev_set[1],dev_set[2])), 128, FLAGS.batch_size, 1)
+            # dev_batches = inpH.batch_batch_iter(list(zip(dev_set[0],dev_set[1],dev_set[2])), 128, FLAGS.batch_size, 1)
+            dev_batches = dev_set
             for db in dev_batches:
                 if len(db)<1:
                     continue

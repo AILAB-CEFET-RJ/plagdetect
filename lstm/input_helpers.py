@@ -344,10 +344,11 @@ class InputHelper(object):
 			for batch_num in range(num_batches_per_epoch):
 				# fetches batch_size rows from dataset, replacing ids for embeddings
 				data = self.ids_to_embeddings(embeddings_map, cursor.fetchmany(batch_size))
+				data = np.asarray(data)
 
 				# Shuffle the data at each epoch
 				if shuffle:
-					shuffle_indices = np.random.permutation(np.arange(batch_size))
+					shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
 					shuffled_data = data[shuffle_indices]
 				else:
 					shuffled_data = data
@@ -364,10 +365,11 @@ class InputHelper(object):
 			for batch_num in range(num_batches_per_epoch):
 				# fetches batch_size rows from dataset, replacing ids for embeddings
 				data = self.ids_to_embeddings(embeddings_map, cursor.fetchmany(batch_size))
+				data = np.asarray(data)
 
 				# Shuffle the data at each epoch
 				if shuffle:
-					shuffle_indices = np.random.permutation(np.arange(batch_size))
+					shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
 					shuffled_data = data[shuffle_indices]
 				else:
 					shuffled_data = data
@@ -376,7 +378,29 @@ class InputHelper(object):
 
 	def ids_to_embeddings(self, emb_map, rows):
 		x1, x2, y = zip(*rows)
+		x1 = list(x1)
+		x2 = list(x2)
 		for i in range(len(y)):
 			x1[i] = emb_map[x1[i]]
 			x2[i] = emb_map[x2[i]]
+		x1 = np.asarray(x1)
+		x2 = np.asarray(x2)
+		y = np.asarray(y)
 		return zip(x1, x2, y)
+
+	def my_get_counts(self, cursor):
+
+		print('Counting train dataset')
+		start_time = time.time()
+		cursor.execute('select count(*) from dataset_train')
+		end_time = time.time()
+		print('Time elapsed on counting training dataset: {} seconds.'.format(round(end_time - start_time, 2)))
+		train_count = cursor.fetchall()[0][0]
+
+		start_time = time.time()
+		cursor.execute('select count(*) from dataset_dev')
+		end_time = time.time()
+		print('Time elapsed on counting dev dataset: {} seconds.'.format(round(end_time - start_time, 2)))
+		dev_count = cursor.fetchall()[0][0]
+
+		return train_count, dev_count
