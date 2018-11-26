@@ -14,3 +14,14 @@ lstm/runs/*
 *.pyc
 *.vec
 *.txt*
+
+correlation_clusters/bin/*
+correlation_clusters/.temp/*
+correlation_clusters/.temp
+correlation_clusters/*~
+correlation_clusters/.vscode
+
+correlation_clusters/instances/*
+correlation_clusters/.project
+correlation_clusters/.cproject
+correlation_clusters/.settings
