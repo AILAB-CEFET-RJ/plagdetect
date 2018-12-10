@@ -4,6 +4,7 @@ import itertools
 from collections import Counter
 import numpy as np
 import time, memory_profiler as mem_profile
+import h5py as h5
 import gc
 from tensorflow.contrib import learn
 from gensim.models.word2vec import Word2Vec
@@ -334,47 +335,78 @@ class InputHelper(object):
 		gc.collect()
 		return dict(zip(ids, embeddings)), vocab_processor
 
+	def build_datasets(self, cursor, total_size, batch_size, percent_dev):
+		dev_batch_size = batch_size * percent_dev // 100
+		train_batch_size = batch_size * (100 - percent_dev) // 100
+		
+		cursor.execute('select * from dataset_id')
+		
+		with h5.File('ds/train.hdf5', 'w') as ft, h5.File('ds/dev.hdf5', 'w') as fd:
+			tset = ft.create_dataset("chunked_train", maxshape=(None, 3), chunks=(batch_size, 3),
+															 compression="gzip", compression_opts=9)
+			dset = fd.create_dataset("chunked_dev", maxshape=(None, 3), chunks=(batch_size, 3),
+															 compression="gzip", compression_opts=9)
+		
+			for i in range(total_size / batch_size + 1):
+				batch = cursor.fetch_many(batch_size)
+				l_size = len(batch)
+				dev_idx = l_size * percent_dev // 100
+				dev, train = batch[:dev_idx], batch[dev_idx:]
+				tset[i*train_batch_size : i*train_batch_size + len(train)] = train
+				dset[i*dev_batch_size : i*dev_batch_size + len(dev)] = dev
+			
+			
+			
+
 	def my_train_batch(self, cursor, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
 		num_batches_per_epoch = int(total_size/batch_size) + 1
 
 		for epoch in range(num_epochs):
-			#sets cursor
-			cursor.execute('select * from dataset_train')
-
-			for batch_num in range(num_batches_per_epoch):
-				# fetches batch_size rows from dataset, replacing ids for embeddings
-				data = self.ids_to_embeddings(embeddings_map, cursor.fetchmany(batch_size))
-				data = np.asarray(data)
-
-				# Shuffle the data at each epoch
-				if shuffle:
-					shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
-					shuffled_data = data[shuffle_indices]
-				else:
-					shuffled_data = data
-
-				yield shuffled_data
+			##sets cursor
+			#cursor.execute('select * from dataset_train')
+			
+			with h5.File('ds/train.hdf5', 'r') as f:
+				dset = f['chunked_train']
+				
+				for batch_num in range(num_batches_per_epoch):
+					# fetches batch_size rows from dataset, replacing ids for embeddings
+					ids = dset[batch_size,:,:]
+					data = self.ids_to_embeddings(embeddings_map, ids)
+					data = np.asarray(data)
+	
+					# Shuffle the data at each epoch
+					if shuffle:
+						shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
+						shuffled_data = data[shuffle_indices]
+					else:
+						shuffled_data = data
+	
+					yield shuffled_data
 
 	def my_dev_batch(self, cursor, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
 		num_batches_per_epoch = int(total_size/batch_size) + 1
 
 		for epoch in range(num_epochs):
-			#sets cursor
-			cursor.execute('select * from dataset_train')
-
-			for batch_num in range(num_batches_per_epoch):
-				# fetches batch_size rows from dataset, replacing ids for embeddings
-				data = self.ids_to_embeddings(embeddings_map, cursor.fetchmany(batch_size))
-				data = np.asarray(data)
-
-				# Shuffle the data at each epoch
-				if shuffle:
-					shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
-					shuffled_data = data[shuffle_indices]
-				else:
-					shuffled_data = data
-
-				yield shuffled_data
+			##sets cursor
+			#cursor.execute('select * from dataset_train')
+			
+			with h5.File('ds/dev.hdf5', 'r') as f:
+				dset = f['chunked_dev']
+	
+				for batch_num in range(num_batches_per_epoch):
+					# fetches batch_size rows from dataset, replacing ids for embeddings
+					ids = dset[batch_size, :, :]
+					data = self.ids_to_embeddings(embeddings_map, ids)
+					data = np.asarray(data)
+	
+					# Shuffle the data at each epoch
+					if shuffle:
+						shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
+						shuffled_data = data[shuffle_indices]
+					else:
+						shuffled_data = data
+	
+					yield shuffled_data
 
 	def ids_to_embeddings(self, emb_map, rows):
 		x1, x2, y = zip(*rows)
