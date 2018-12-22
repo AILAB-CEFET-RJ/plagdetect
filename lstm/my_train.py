@@ -64,12 +64,14 @@ num_epochs = FLAGS.num_epochs
 db = lite.connect(FLAGS.training_files)
 cursor = db.cursor()
 emb_map, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
-train_count, dev_count = inpH.my_get_counts(cursor)
+total_count = inpH.my_get_counts(cursor)
 
-train_set = inpH.my_train_batch(cursor, emb_map, train_count, FLAGS.batch_size, num_epochs)
+train_count, dev_count = inpH.build_datasets(cursor, total_count, batch_size, 30)
+
+train_set = inpH.my_train_batch(emb_map, train_count, FLAGS.batch_size, num_epochs)
 sum_no_of_batches = train_count // batch_size + 1
 
-dev_set = inpH.my_dev_batch(cursor, emb_map, dev_count, FLAGS.batch_size, num_epochs)
+dev_set = inpH.my_dev_batch(emb_map, dev_count, FLAGS.batch_size, num_epochs)
 dev_no_of_batches = dev_count // batch_size + 1
 
 # train_set, dev_set, sum_no_of_batches = inpH.myGetDataSets(cursor ,max_document_length, 10,

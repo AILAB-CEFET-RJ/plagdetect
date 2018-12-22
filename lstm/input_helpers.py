@@ -11,7 +11,7 @@ from gensim.models.word2vec import Word2Vec
 import gzip
 from random import random
 from preprocess import MyVocabularyProcessor
-import sys
+import sys, os, shutil
 
 sys.path.append('../')
 import datagen.generate_dataset as datagen
@@ -337,28 +337,39 @@ class InputHelper(object):
 
 	def build_datasets(self, cursor, total_size, batch_size, percent_dev):
 		dev_batch_size = batch_size * percent_dev // 100
-		train_batch_size = batch_size * (100 - percent_dev) // 100
+		train_batch_size = (batch_size * (100 - percent_dev) // 100) + 1
 		
 		cursor.execute('select * from dataset_id')
-		
+
+		if os.path.exists('ds'):
+			shutil.rmtree('ds', ignore_errors=True)
+		os.mkdir('ds')
 		with h5.File('ds/train.hdf5', 'w') as ft, h5.File('ds/dev.hdf5', 'w') as fd:
-			tset = ft.create_dataset("chunked_train", maxshape=(None, 3), chunks=(batch_size, 3),
+			tset = ft.create_dataset("chunked_train", shape=(0, 3), dtype='int', maxshape=(None, 3), chunks=(batch_size, 3),
 															 compression="gzip", compression_opts=9)
-			dset = fd.create_dataset("chunked_dev", maxshape=(None, 3), chunks=(batch_size, 3),
+			dset = fd.create_dataset("chunked_dev", shape=(0, 3), dtype='int', maxshape=(None, 3), chunks=(batch_size, 3),
 															 compression="gzip", compression_opts=9)
-		
+			train_count, dev_count = 0, 0
 			for i in range(total_size / batch_size + 1):
-				batch = cursor.fetch_many(batch_size)
+				batch = cursor.fetchmany(batch_size)
 				l_size = len(batch)
 				dev_idx = l_size * percent_dev // 100
 				dev, train = batch[:dev_idx], batch[dev_idx:]
+
+				tset.resize(tuple(map(sum, zip(tset.shape, (len(train), 0)))))
+				dset.resize(tuple(map(sum, zip(dset.shape, (len(dev), 0)))))
 				tset[i*train_batch_size : i*train_batch_size + len(train)] = train
 				dset[i*dev_batch_size : i*dev_batch_size + len(dev)] = dev
+
+				train_count = train_count + len(train)
+				dev_count = dev_count + len(dev)
+
+			return train_count, dev_count
 			
 			
 			
 
-	def my_train_batch(self, cursor, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
+	def my_train_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
 		num_batches_per_epoch = int(total_size/batch_size) + 1
 
 		for epoch in range(num_epochs):
@@ -370,7 +381,11 @@ class InputHelper(object):
 				
 				for batch_num in range(num_batches_per_epoch):
 					# fetches batch_size rows from dataset, replacing ids for embeddings
-					ids = dset[batch_size,:,:]
+					beg, end = (batch_num*batch_size), ((batch_num+1)*batch_size-1)
+					if batch_num == num_batches_per_epoch-1:
+						ids = dset[beg:, :]
+					else:
+						ids = dset[beg:end, :]
 					data = self.ids_to_embeddings(embeddings_map, ids)
 					data = np.asarray(data)
 	
@@ -383,7 +398,7 @@ class InputHelper(object):
 	
 					yield shuffled_data
 
-	def my_dev_batch(self, cursor, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
+	def my_dev_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
 		num_batches_per_epoch = int(total_size/batch_size) + 1
 
 		for epoch in range(num_epochs):
@@ -395,7 +410,11 @@ class InputHelper(object):
 	
 				for batch_num in range(num_batches_per_epoch):
 					# fetches batch_size rows from dataset, replacing ids for embeddings
-					ids = dset[batch_size, :, :]
+					beg, end = (batch_num*batch_size), ((batch_num+1)*batch_size-1)
+					if batch_num == num_batches_per_epoch-1:
+						ids = dset[beg:, :]
+					else:
+						ids = dset[beg:end, :]
 					data = self.ids_to_embeddings(embeddings_map, ids)
 					data = np.asarray(data)
 	
@@ -424,15 +443,9 @@ class InputHelper(object):
 
 		print('Counting train dataset')
 		start_time = time.time()
-		cursor.execute('select count(*) from dataset_train')
+		cursor.execute('select count(*) from dataset_id')
 		end_time = time.time()
 		print('Time elapsed on counting training dataset: {} seconds.'.format(round(end_time - start_time, 2)))
-		train_count = cursor.fetchall()[0][0]
+		count = cursor.fetchall()[0][0]
 
-		start_time = time.time()
-		cursor.execute('select count(*) from dataset_dev')
-		end_time = time.time()
-		print('Time elapsed on counting dev dataset: {} seconds.'.format(round(end_time - start_time, 2)))
-		dev_count = cursor.fetchall()[0][0]
-
-		return train_count, dev_count
+		return count

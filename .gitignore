@@ -8,6 +8,7 @@ dataset-generated/*
 dataset-generated2/*
 info/*
 errors/*
+lstm/ds/*
 lstm/runs/*
 *.db
 *-journal
