@@ -206,9 +206,9 @@ if __name__ == '__main__':
 		create_views(c)
 		create_indexes(c)
 
-		if split_dataset == 'create':
-			c2 = db.cursor()
-			dev_train_sep.separate(c, c2, 100000)
+		# if split_dataset == 'create':
+		# 	c2 = db.cursor()
+		# 	dev_train_sep.separate(c, c2, 100000)
 
 		db.commit()
 	except lite.Error as e:
