@@ -336,6 +336,7 @@ class InputHelper(object):
 		return dict(zip(ids, embeddings)), vocab_processor
 
 	def build_datasets(self, cursor, total_size, batch_size, percent_dev):
+		print('Building dataset files...')
 		dev_batch_size = batch_size * percent_dev // 100
 		train_batch_size = (batch_size * (100 - percent_dev) // 100) + 1
 		
@@ -363,7 +364,12 @@ class InputHelper(object):
 
 				train_count = train_count + len(train)
 				dev_count = dev_count + len(dev)
+				percent_complete = ((i+1) * batch_size) / float(total_size)  * 100
+				if percent_complete > 100:
+					percent_complete = 100
+				print('Adding batch to dataset. %.2f%% complete.' % percent_complete)
 
+			print('Dataset files built!')
 			return train_count, dev_count
 			
 			
