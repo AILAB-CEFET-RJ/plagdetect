@@ -2,8 +2,8 @@ import sqlite3 as lite
 import xml.etree.ElementTree as et
 import sys, os, errno, codecs
 import nltk.data
-from datagen import dev_train_sep
-
+# from datagen import dev_train_sep
+from tensorflow import flags
 
 def remove(filename):
 	try:
@@ -156,42 +156,19 @@ def get_ignore_list():
 
 	]
 
-def help():
-	print('''
-------------------------------------------------------------------------------------------------------------------------
-Usage: \tgenerate-db.py [database file] [dataset folder] [create dataset]
-
-database file:\tpath where database should be created.\t(default = plag.db)
-dataset folder:\tpath to folder containing dataset.\t(default = dataset)
-create dataset:\tenable table creations for train and dev datasets.\t(default = create)
-
-Note: all paths must be relative to the parent folder of this script.
-------------------------------------------------------------------------------------------------------------------------
-	''')
 
 if __name__ == '__main__':
 	os.chdir('../')
 
-	if len(sys.argv) > 4:
-		help()
-		raise ValueError('Invalid number of arguments. Received: ' + str(len(sys.argv)-1) + ' Expected: 2')
+	flags.DEFINE_string('db', 'plag.db', 'Path to the database file to be generated.')
+	flags.DEFINE_string('data', 'dataset', 'Folder containing the dataset to be used.')
+	# flags.DEFINE_boolean('split', False, 'Enables table creation for train and dev datasets.')
 
-	if len(sys.argv) > 1:
-		db_filename = sys.argv[1]
-	else:
-		db_filename = 'plag.db'
+	db_filename = flags.FLAGS.db
+	datafolder = flags.FLAGS.data
+	# split_dataset = flags.FLAGS.split
 
-	if len(sys.argv) > 2:
-		datafolder = sys.argv[2]
-	else:
-		datafolder = 'dataset'
-
-	if len(sys.argv) > 3:
-		split_dataset = sys.argv[3]
-	else:
-		split_dataset = 'create'
-
-	print('Data base will be generated at ')
+	print('Data base will be generated at ', db_filename)
 	remove(db_filename)
 	db = None
 	global ignore_list
@@ -206,7 +183,7 @@ if __name__ == '__main__':
 		create_views(c)
 		create_indexes(c)
 
-		# if split_dataset == 'create':
+		# if split_dataset:
 		# 	c2 = db.cursor()
 		# 	dev_train_sep.separate(c, c2, 100000)
 

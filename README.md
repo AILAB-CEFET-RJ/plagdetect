@@ -18,16 +18,16 @@ Remember to activate the environment once it is created using `source activate s
 
 Create database:
 
-```python generate_db.py```
+```python gen_db.py```
 
 Run this command under the root directory of the project. Make sure to have the documents that will be used in your dataset
-inside the **dataset** folder.
+inside the **scripts** folder.
 
 ---
 
 Train neural network: 
 
-```python train.py is_char_based=False --training_files=../plag.db```
+```python train.py --is_char_based=False --training_files=../plag.db```
 
 Make sure to run this command under **lstm** folder. The database must have been
 generated already for this code to work.

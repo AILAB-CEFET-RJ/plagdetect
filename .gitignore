@@ -6,6 +6,7 @@ dataset-full/*
 dataset-sample/*
 dataset-generated/*
 dataset-generated2/*
+playground/*
 info/*
 errors/*
 lstm/ds/*
