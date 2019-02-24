@@ -32,7 +32,46 @@ class SiameseLSTMw2v(object):
         #tmp= tf.mul(y,tf.square(d))
         tmp2 = (1-y) *tf.square(tf.maximum((1 - d),0))
         return tf.reduce_sum(tmp +tmp2)/batch_size/2
-    
+
+    def tf_f1_score(self, y_true, y_pred):
+        """Computes 3 different f1 scores, micro macro
+        weighted.
+        micro: f1 score accross the classes, as 1
+        macro: mean of f1 scores per class
+        weighted: weighted average of f1 scores per class,
+                weighted from the support of each class
+
+
+        Args:
+            y_true (Tensor): labels, with shape (batch, num_classes)
+            y_pred (Tensor): model predictions, same shape as y_true
+
+        Returns:
+            tuple(Tensor): (micro, macro, weighted)
+                        tuple of the computed f1 scores
+        """
+
+        f1 = 0
+
+        y_true = tf.cast(y_true, tf.float64)
+        y_pred = tf.cast(y_pred, tf.float64)
+
+        TP = tf.count_nonzero(y_pred * y_true, dtype=tf.float64, name='TP')
+        # if tf.is_nan(tf.cast(TP, tf.float64)):
+        #     TP = tf.zeros([1], tf.int64)
+        FP = tf.count_nonzero(y_pred * (y_true - 1), dtype=tf.float64, name='FP')
+        FN = tf.count_nonzero((y_pred - 1) * y_true, dtype=tf.float64, name='FN')
+
+        precision = TP / (TP + FP)
+        recall = TP / (TP + FN)
+        f1 = 2 * precision * recall / (precision + recall)
+
+        f1 = tf.reduce_mean(f1)
+        print(f1)
+
+
+        return f1
+
     def __init__(
         self, sequence_length, vocab_size, embedding_size, hidden_units, l2_reg_lambda, batch_size, trainableEmbeddings):
 
@@ -65,5 +104,4 @@ class SiameseLSTMw2v(object):
         #### Accuracy computation is outside of this class.
         with tf.name_scope("accuracy"):
             self.temp_sim = tf.subtract(tf.ones_like(self.distance),tf.rint(self.distance), name="temp_sim") #auto threshold 0.5
-            correct_predictions = tf.equal(self.temp_sim, self.input_y)
-            self.accuracy=tf.reduce_mean(tf.cast(correct_predictions, "float"), name="accuracy")
+            self.accuracy = self.tf_f1_score(self.input_y, self.temp_sim)

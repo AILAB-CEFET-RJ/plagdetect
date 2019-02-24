@@ -11,7 +11,7 @@ from gensim.models.word2vec import Word2Vec
 import gzip
 from random import random
 from preprocess import MyVocabularyProcessor
-import sys, os, shutil
+import sys, os, shutil, math
 
 sys.path.append('../')
 import datagen.generate_dataset as datagen
@@ -337,9 +337,9 @@ class InputHelper(object):
 
 	def build_datasets(self, cursor, total_size, batch_size, percent_dev):
 		print('Building dataset files...')
-		dev_batch_size = batch_size * percent_dev // 100
-		train_batch_size = (batch_size * (100 - percent_dev) // 100) + 1
-		
+		dev_batch_size = int(round(batch_size * percent_dev / 100.0)) # 307
+		train_batch_size = int(round((batch_size * (100 - percent_dev) / 100.0))) # 717
+
 		cursor.execute('select * from dataset_id')
 
 		if os.path.exists('ds'):
@@ -354,13 +354,15 @@ class InputHelper(object):
 			for i in range(total_size / batch_size + 1):
 				batch = cursor.fetchmany(batch_size)
 				l_size = len(batch)
-				dev_idx = l_size * percent_dev // 100
+				dev_idx = int(round(l_size * percent_dev / 100.0))
 				dev, train = batch[:dev_idx], batch[dev_idx:]
 
-				tset.resize(tuple(map(sum, zip(tset.shape, (len(train), 0)))))
-				dset.resize(tuple(map(sum, zip(dset.shape, (len(dev), 0)))))
-				tset[i*train_batch_size : i*train_batch_size + len(train)] = train
-				dset[i*dev_batch_size : i*dev_batch_size + len(dev)] = dev
+				prev_train_shape = tset.shape
+				prev_dev_shape = dset.shape
+				tset.resize(tuple(map(sum, zip(prev_train_shape, (len(train), 0)))))
+				dset.resize(tuple(map(sum, zip(prev_dev_shape, (len(dev), 0)))))
+				tset[prev_train_shape[0]:] = train
+				dset[prev_dev_shape[0]:] = dev
 
 				train_count = train_count + len(train)
 				dev_count = dev_count + len(dev)
@@ -376,7 +378,7 @@ class InputHelper(object):
 			
 
 	def my_train_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
-		num_batches_per_epoch = int(total_size/batch_size) + 1
+		num_batches_per_epoch = int(math.ceil(float(total_size)/batch_size))
 
 		for epoch in range(num_epochs):
 			##sets cursor
@@ -405,7 +407,7 @@ class InputHelper(object):
 					yield shuffled_data
 
 	def my_dev_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
-		num_batches_per_epoch = int(total_size/batch_size) + 1
+		num_batches_per_epoch = int(math.ceil(float(total_size)/batch_size))
 
 		for epoch in range(num_epochs):
 			##sets cursor
