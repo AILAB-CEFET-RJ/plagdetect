@@ -160,9 +160,9 @@ def get_ignore_list():
 if __name__ == '__main__':
 	os.chdir('../')
 
-	flags.DEFINE_string('db', 'plag.db', 'Path to the database file to be generated.')
-	flags.DEFINE_string('data', 'dataset', 'Folder containing the dataset to be used.')
-	# flags.DEFINE_boolean('split', False, 'Enables table creation for train and dev datasets.')
+	flags.DEFINE_string('db', 'plag.db', 'Path to the database file to be generated (default: plag.db).')
+	flags.DEFINE_string('data', 'dataset', 'Folder containing the dataset to be used (default: dataset).')
+	# flags.DEFINE_boolean('split', False, 'Enables table creation for train and dev datasets (default: False).')
 
 	db_filename = flags.FLAGS.db
 	datafolder = flags.FLAGS.data

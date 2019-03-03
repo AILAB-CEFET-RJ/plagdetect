@@ -335,41 +335,59 @@ class InputHelper(object):
 		gc.collect()
 		return dict(zip(ids, embeddings)), vocab_processor
 
-	def build_datasets(self, cursor, total_size, batch_size, percent_dev):
+	def build_datasets(self, cursor, total_size, batch_size, percent_dev, percent_test):
 		start_time = time.time()
 		print('Building dataset files...')
+		test_batch_size = int(round(batch_size * percent_test / 100.0)) # 307
 		dev_batch_size = int(round(batch_size * percent_dev / 100.0)) # 307
-		train_batch_size = int(round((batch_size * (100 - percent_dev) / 100.0))) # 717
+		train_batch_size = int(round((batch_size * (100 - percent_dev - percent_test) / 100.0))) # 717
+
+		if batch_size > test_batch_size + dev_batch_size + train_batch_size:
+			train_batch_size += batch_size - (test_batch_size + dev_batch_size + train_batch_size)
 
 		cursor.execute('select * from dataset_id')
 
 		if os.path.exists('ds'):
 			shutil.rmtree('ds', ignore_errors=True)
 		os.mkdir('ds')
-		with h5.File('ds/train.hdf5', 'w') as ft, h5.File('ds/dev.hdf5', 'w') as fd:
-			tset = ft.create_dataset("chunked_train", shape=(0, 3), dtype='int', maxshape=(None, 3), chunks=(batch_size, 3),
-															 compression="gzip", compression_opts=9)
-			dset = fd.create_dataset("chunked_dev", shape=(0, 3), dtype='int', maxshape=(None, 3), chunks=(batch_size, 3),
-															 compression="gzip", compression_opts=9)
-			train_count, dev_count = 0, 0
-			for i in range(total_size / batch_size + 1):
+		with h5.File('ds/train.hdf5', 'w') as ftrain, h5.File('ds/dev.hdf5', 'w') as fdev, h5.File('ds/test.hdf5', 'w') as ftest:
+			train_set = ftrain.create_dataset("chunked_train", shape=(0, 3), dtype='int', maxshape=(None, 3),
+																				chunks=(batch_size, 3), compression="gzip", compression_opts=9)
+			dev_set = fdev.create_dataset("chunked_dev", shape=(0, 3), dtype='int', maxshape=(None, 3),
+																		chunks=(batch_size, 3), compression="gzip", compression_opts=9)
+			test_set = ftest.create_dataset("chunked_test", shape=(0, 3), dtype='int', maxshape=(None, 3),
+																			chunks=(batch_size, 3), compression="gzip", compression_opts=9)
+			train_count, dev_count, test_count = 0, 0, 0
+			for i in range(int(math.ceil(float(total_size) / batch_size))):
 				batch = cursor.fetchmany(batch_size)
 				l_size = len(batch)
-				dev_idx = int(round(l_size * percent_dev / 100.0))
-				dev, train = batch[:dev_idx], batch[dev_idx:]
+				# test_idx = int(round(l_size * percent_test) / 100.0)
+				# dev_idx = int(round(l_size * (percent_test + percent_dev) / 100.0))
 
-				prev_train_shape = tset.shape
-				prev_dev_shape = dset.shape
-				tset.resize(tuple(map(sum, zip(prev_train_shape, (len(train), 0)))))
-				dset.resize(tuple(map(sum, zip(prev_dev_shape, (len(dev), 0)))))
-				tset[prev_train_shape[0]:] = train
-				dset[prev_dev_shape[0]:] = dev
+				if l_size == batch_size:
+					test_idx = test_batch_size
+					dev_idx = test_batch_size + dev_batch_size
+				else:
+					test_idx = int(round(l_size * percent_test) / 100.0)
+					dev_idx = test_idx * 2
+
+				test, dev, train = batch[:test_idx], batch[test_idx:dev_idx], batch[dev_idx:]
+
+				prev_train_shape = train_set.shape
+				prev_dev_shape = dev_set.shape
+				prev_test_shape = test_set.shape
+				train_set.resize(tuple(map(sum, zip(prev_train_shape, (len(train), 0)))))
+				dev_set.resize(tuple(map(sum, zip(prev_dev_shape, (len(dev), 0)))))
+				test_set.resize(tuple(map(sum, zip(prev_test_shape, (len(test), 0)))))
+				train_set[prev_train_shape[0]:] = train
+				dev_set[prev_dev_shape[0]:] = dev
+				test_set[prev_test_shape[0]:] = test
 
 				train_count = train_count + len(train)
 				dev_count = dev_count + len(dev)
-				percent_complete = ((i+1) * batch_size) / float(total_size)  * 100
-				if percent_complete > 100:
-					percent_complete = 100
+				test_count = test_count + len(test)
+				percent_complete = ((i+1) * batch_size) / float(total_size) * 100
+				percent_complete = min(percent_complete, 100.0)
 
 				end_time = time.time()
 				print('Adding batch to dataset. {} complete. Time elapsed: {} seconds.'.format(round(percent_complete, 2),
@@ -378,10 +396,13 @@ class InputHelper(object):
 			print('Dataset files built!')
 			end_time = time.time()
 			print('Time elapsed on dataset creation: {} seconds.'.format(round(end_time - start_time, 2)))
-			return train_count, dev_count
-			
-			
-			
+			with open('ds/count', 'w') as f:
+				print('\t'.join(('train', 'dev', 'test')) + '\n' + '\t'.join((str(train_count), str(dev_count), str(test_count))))
+				f.write('\t'.join((str(train_count), str(dev_count), str(test_count))))
+			return train_count, dev_count, test_count
+
+
+
 
 	def my_train_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
 		num_batches_per_epoch = int(math.ceil(float(total_size)/batch_size))
@@ -389,10 +410,10 @@ class InputHelper(object):
 		for epoch in range(num_epochs):
 			##sets cursor
 			#cursor.execute('select * from dataset_train')
-			
+
 			with h5.File('ds/train.hdf5', 'r') as f:
 				dset = f['chunked_train']
-				
+
 				for batch_num in range(num_batches_per_epoch):
 					# fetches batch_size rows from dataset, replacing ids for embeddings
 					beg, end = (batch_num*batch_size), ((batch_num+1)*batch_size-1)
@@ -402,14 +423,14 @@ class InputHelper(object):
 						ids = dset[beg:end, :]
 					data = self.ids_to_embeddings(embeddings_map, ids)
 					data = np.asarray(data)
-	
+
 					# Shuffle the data at each epoch
 					if shuffle:
 						shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
 						shuffled_data = data[shuffle_indices]
 					else:
 						shuffled_data = data
-	
+
 					yield shuffled_data
 
 	def my_dev_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
@@ -418,10 +439,10 @@ class InputHelper(object):
 		for epoch in range(num_epochs):
 			##sets cursor
 			#cursor.execute('select * from dataset_train')
-			
+
 			with h5.File('ds/dev.hdf5', 'r') as f:
 				dset = f['chunked_dev']
-	
+
 				for batch_num in range(num_batches_per_epoch):
 					# fetches batch_size rows from dataset, replacing ids for embeddings
 					beg, end = (batch_num*batch_size), ((batch_num+1)*batch_size-1)
@@ -431,14 +452,14 @@ class InputHelper(object):
 						ids = dset[beg:end, :]
 					data = self.ids_to_embeddings(embeddings_map, ids)
 					data = np.asarray(data)
-	
+
 					# Shuffle the data at each epoch
 					if shuffle:
 						shuffle_indices = np.random.permutation(np.arange(data.shape[0]))
 						shuffled_data = data[shuffle_indices]
 					else:
 						shuffled_data = data
-	
+
 					yield shuffled_data
 
 	def ids_to_embeddings(self, emb_map, rows):
