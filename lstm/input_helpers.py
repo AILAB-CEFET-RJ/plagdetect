@@ -401,17 +401,20 @@ class InputHelper(object):
 				f.write('\t'.join((str(train_count), str(dev_count), str(test_count))))
 			return train_count, dev_count, test_count
 
+	def get_counts(self, ds_folder):
+		with open(ds_folder + '/count') as f:
+			train, dev, test = f.read().split('\t')
+			return train, dev, test
 
 
-
-	def my_train_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
+	def my_train_batch(self, embeddings_map, total_size, batch_size, num_epochs, ds_folder='ds', shuffle=True):
 		num_batches_per_epoch = int(math.ceil(float(total_size)/batch_size))
 
 		for epoch in range(num_epochs):
 			##sets cursor
 			#cursor.execute('select * from dataset_train')
 
-			with h5.File('ds/train.hdf5', 'r') as f:
+			with h5.File(ds_folder+'/train.hdf5', 'r') as f:
 				dset = f['chunked_train']
 
 				for batch_num in range(num_batches_per_epoch):
@@ -433,14 +436,14 @@ class InputHelper(object):
 
 					yield shuffled_data
 
-	def my_dev_batch(self, embeddings_map, total_size, batch_size, num_epochs, shuffle=True):
+	def my_dev_batch(self, embeddings_map, total_size, batch_size, num_epochs, ds_folder='ds', shuffle=True):
 		num_batches_per_epoch = int(math.ceil(float(total_size)/batch_size))
 
 		for epoch in range(num_epochs):
 			##sets cursor
 			#cursor.execute('select * from dataset_train')
 
-			with h5.File('ds/dev.hdf5', 'r') as f:
+			with h5.File(ds_folder+'/dev.hdf5', 'r') as f:
 				dset = f['chunked_dev']
 
 				for batch_num in range(num_batches_per_epoch):

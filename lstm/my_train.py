@@ -30,14 +30,15 @@ tf.flags.DEFINE_string("word2vec_format", "text", "word2vec pre-trained embeddin
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 300)")
 tf.flags.DEFINE_float("dropout_keep_prob", 1.0, "Dropout keep probability (default: 1.0)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-tf.flags.DEFINE_string("training_files", "person_match.train2", "training file (default: person_match.train2)")  #for sentence semantic similarity use "train_snli.txt"
+tf.flags.DEFINE_string("database", "person_match.train2", "training file (default: person_match.train2)")  #for sentence semantic similarity use "train_snli.txt"
+tf.flags.DEFINE_string("training_folder", 'ds', "path to folder containing dataset (default: ds)")
 tf.flags.DEFINE_integer("hidden_units", 50, "Number of hidden units (default:50)")
 
 # Training parameters
 tf.flags.DEFINE_integer("batch_size", 1024, "Batch Size (default: 1024)")
 tf.flags.DEFINE_integer("num_epochs", 300, "Number of training epochs (default: 300)")
-tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 1000)")
-tf.flags.DEFINE_integer("checkpoint_every", 1000, "Save model after this many steps (default: 1000)")
+tf.flags.DEFINE_integer("evaluate_every", 1, "Evaluate model on dev set after this many steps (default: 1)")
+tf.flags.DEFINE_integer("checkpoint_every", 50, "Save model after this many steps (default: 50)")
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
@@ -49,26 +50,26 @@ for attr, value in sorted(FLAGS.__flags.items()):
     print("{}={}".format(attr.upper(), value))
 print("")
 
-if FLAGS.training_files==None:
-    print("Input Files List is empty. use --training_files argument.")
+if FLAGS.database==None:
+    print("Input Files List is empty. use --database argument.")
     exit()
 
 
 max_document_length=15
 #max_document_length=sys.maxint # attempt to read all words in a document
 inpH = InputHelper()
-#train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.training_files,max_document_length, 10,
+#train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.database,max_document_length, 10,
 #                                                                         FLAGS.batch_size, FLAGS.is_char_based)
 
 batch_size = FLAGS.batch_size
 num_epochs = FLAGS.num_epochs
 
-db = lite.connect(FLAGS.training_files)
+db = lite.connect(FLAGS.database)
 cursor = db.cursor()
 emb_map, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
-total_count = inpH.my_get_counts(cursor)
+train_count, dev_count, total_count = inpH.get_counts(FLAGS.training_folder)
+total_count = train_count + dev_count
 
-train_count, dev_count = inpH.build_datasets(cursor, total_count, batch_size, 30)
 sum_no_of_batches = int(math.ceil(float(train_count) / batch_size))
 dev_no_of_batches = int(math.ceil(float(dev_count) / batch_size))
 
@@ -263,6 +264,8 @@ with tf.Graph().as_default():
     ptr=0
     max_validation_acc=0.0
     for nn in xrange((sum_no_of_batches)*FLAGS.num_epochs):
+        # if current_step % sum_no_of_batches == 0:
+		    #     start_time = time.time()
         train_batch = train_batches.next()
         if len(train_batch)<1:
             continue
@@ -290,3 +293,7 @@ with tf.Graph().as_default():
                 saver.save(sess, checkpoint_prefix, global_step=current_step)
                 tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph"+str(nn)+".pb", as_text=False)
                 print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(nn, max_validation_acc, checkpoint_prefix))
+
+        # if current_step % sum_no_of_batches:
+        #     end_time  = time.time()
+        #     print('Time spent on epoch {}: {}')
