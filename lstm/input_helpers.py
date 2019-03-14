@@ -404,7 +404,7 @@ class InputHelper(object):
 	def get_counts(self, ds_folder):
 		with open(ds_folder + '/count') as f:
 			train, dev, test = f.read().split('\t')
-			return train, dev, test
+			return int(train), int(dev), int(test)
 
 
 	def my_train_batch(self, embeddings_map, total_size, batch_size, num_epochs, ds_folder='ds', shuffle=True):
@@ -439,7 +439,8 @@ class InputHelper(object):
 	def my_dev_batch(self, embeddings_map, total_size, batch_size, num_epochs, ds_folder='ds', shuffle=True):
 		num_batches_per_epoch = int(math.ceil(float(total_size)/batch_size))
 
-		for epoch in range(num_epochs):
+		# for epoch in range(num_epochs):
+		while True:
 			##sets cursor
 			#cursor.execute('select * from dataset_train')
 

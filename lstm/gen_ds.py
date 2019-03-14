@@ -6,7 +6,7 @@ import time
 tf.flags.DEFINE_integer("batch_size", 1024, "Batch Size (default: 1024)")
 tf.flags.DEFINE_integer("percent_dev", 10, "Percentage Dev (default: 10)")
 tf.flags.DEFINE_integer("percent_test", 10, "Percentage Dev (default: 10)")
-tf.flags.DEFINE_string("database", '../plag1.db', "Database path (default: ../plag.db)")
+tf.flags.DEFINE_string("database", '../plag.db', "Database path (default: ../plag.db)")
 
 FLAGS = tf.flags.FLAGS
 

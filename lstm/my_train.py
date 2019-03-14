@@ -17,6 +17,8 @@ from random import random
 import sqlite3 as lite
 import sys
 import math
+from tensorflow.python.client import device_lib
+
 # Parameters
 # ==================================================
 
@@ -30,7 +32,7 @@ tf.flags.DEFINE_string("word2vec_format", "text", "word2vec pre-trained embeddin
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 300)")
 tf.flags.DEFINE_float("dropout_keep_prob", 1.0, "Dropout keep probability (default: 1.0)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-tf.flags.DEFINE_string("database", "person_match.train2", "training file (default: person_match.train2)")  #for sentence semantic similarity use "train_snli.txt"
+tf.flags.DEFINE_string("database", "../plag.db", "training file (default: ../plag.db)")  #for sentence semantic similarity use "train_snli.txt"
 tf.flags.DEFINE_string("training_folder", 'ds', "path to folder containing dataset (default: ds)")
 tf.flags.DEFINE_integer("hidden_units", 50, "Number of hidden units (default:50)")
 
@@ -42,11 +44,11 @@ tf.flags.DEFINE_integer("checkpoint_every", 50, "Save model after this many step
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
+tf.flags.DEFINE_boolean('print_available_devices', False, 'Print available devices (default: False)')
 
 FLAGS = tf.flags.FLAGS
-FLAGS._parse_flags()
 print("\nParameters:")
-for attr, value in sorted(FLAGS.__flags.items()):
+for attr, value in sorted(FLAGS.flag_values_dict().iteritems()):
     print("{}={}".format(attr.upper(), value))
 print("")
 
@@ -67,13 +69,11 @@ num_epochs = FLAGS.num_epochs
 db = lite.connect(FLAGS.database)
 cursor = db.cursor()
 emb_map, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
-train_count, dev_count, total_count = inpH.get_counts(FLAGS.training_folder)
+train_count, dev_count = inpH.get_counts(FLAGS.training_folder)[0:2]
 total_count = train_count + dev_count
 
 sum_no_of_batches = int(math.ceil(float(train_count) / batch_size))
 dev_no_of_batches = int(math.ceil(float(dev_count) / batch_size))
-
-#print(total_count, train_count, dev_count, total_count == train_count+dev_count)
 
 train_set = inpH.my_train_batch(emb_map, train_count, FLAGS.batch_size, num_epochs)
 
@@ -251,7 +251,7 @@ with tf.Graph().as_default():
             }
         step, loss, accuracy, sim, summaries = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim, dev_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
-        print("DEV {}: step {}, loss {:g}, acc {:g}".format(time_str, step/sum_no_of_batches, loss, accuracy))
+        print("DEV {}: step {}, loss {:g}, f1 {:g}".format(time_str, step/sum_no_of_batches, loss, accuracy))
         dev_summary_writer.add_summary(summaries, step)
         return accuracy
 
