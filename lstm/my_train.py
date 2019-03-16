@@ -44,7 +44,6 @@ tf.flags.DEFINE_integer("checkpoint_every", 50, "Save model after this many step
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
-tf.flags.DEFINE_boolean('print_available_devices', False, 'Print available devices (default: False)')
 
 FLAGS = tf.flags.FLAGS
 print("\nParameters:")
