@@ -107,5 +107,5 @@ The expected name of the file is `wiki.simple.vec`.
 After completing all the steps above, you may train the model running the following command under
 the `lstm` directory:
 
-```python train.py```
+```python my_train.py```
 
