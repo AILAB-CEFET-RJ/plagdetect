@@ -11,13 +11,10 @@ import gc
 from input_helpers import InputHelper
 from siamese_network import SiameseLSTM
 from siamese_network_semantic import SiameseLSTMw2v
-from tensorflow.contrib import learn
-import gzip
 from random import random
 import sqlite3 as lite
 import sys
 import math
-from tensorflow.python.client import device_lib
 
 # Parameters
 # ==================================================
@@ -41,6 +38,7 @@ tf.flags.DEFINE_integer("batch_size", 1024, "Batch Size (default: 1024)")
 tf.flags.DEFINE_integer("num_epochs", 300, "Number of training epochs (default: 300)")
 tf.flags.DEFINE_integer("evaluate_every", 1, "Evaluate model on dev set after this many steps (default: 1)")
 tf.flags.DEFINE_integer("checkpoint_every", 50, "Save model after this many steps (default: 50)")
+tf.flags.DEFINE_integer("patience", 20, "Patience for early stopping (default: 20)")
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
@@ -252,7 +250,7 @@ with tf.Graph().as_default():
         time_str = datetime.datetime.now().isoformat()
         print("DEV {}: step {}, loss {:g}, f1 {:g}".format(time_str, step/sum_no_of_batches, loss, accuracy))
         dev_summary_writer.add_summary(summaries, step)
-        return accuracy
+        return accuracy, loss
 
     # Generate batches
     # batches=inpH.batch_batch_iter(
@@ -262,19 +260,26 @@ with tf.Graph().as_default():
     dev_batches = dev_set
     ptr=0
     max_validation_acc=0.0
-    for nn in xrange((sum_no_of_batches)*FLAGS.num_epochs):
-        # if current_step % sum_no_of_batches == 0:
-		    #     start_time = time.time()
-        train_batch = train_batches.next()
-        if len(train_batch)<1:
-            continue
-        x1_batch,x2_batch, y_batch = zip(*train_batch)
-        if len(y_batch)<1:
-            continue
-        train_step(x1_batch, x2_batch, y_batch)
+    stopping_step = 0
+    best_loss = sys.float_info.max
+
+    for epoch in xrange(FLAGS.num_epochs):
+        start_time = time.time()
+
         current_step = tf.train.global_step(sess, global_step)
-        sum_acc=0.0
-        if current_step % FLAGS.evaluate_every == 0:
+
+        for nn in xrange(sum_no_of_batches):
+            train_batch = train_batches.next()
+            if len(train_batch)<1:
+                continue
+            x1_batch,x2_batch, y_batch = zip(*train_batch)
+            if len(y_batch)<1:
+                continue
+            train_step(x1_batch, x2_batch, y_batch)
+            sum_acc=0.0
+            sum_loss=0.0
+
+        if epoch % FLAGS.evaluate_every == 0:
             print("\nEvaluation:")
             for _ in xrange(dev_no_of_batches):
                 dev_batch = dev_batches.next()
@@ -283,16 +288,34 @@ with tf.Graph().as_default():
                 x1_dev_b,x2_dev_b,y_dev_b = zip(*dev_batch)
                 if len(y_dev_b)<1:
                     continue
-                acc = dev_step(x1_dev_b, x2_dev_b, y_dev_b)
+                acc, loss = dev_step(x1_dev_b, x2_dev_b, y_dev_b)
                 sum_acc = sum_acc + acc
+                sum_loss = sum_loss + loss
             print("")
-        if current_step % FLAGS.checkpoint_every == 0:
+        if epoch % FLAGS.checkpoint_every == 0:
             if sum_acc >= max_validation_acc:
                 max_validation_acc = sum_acc
                 saver.save(sess, checkpoint_prefix, global_step=current_step)
-                tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph"+str(nn)+".pb", as_text=False)
+                tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph"+str(epoch)+".pb", as_text=False)
                 print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(nn, max_validation_acc, checkpoint_prefix))
 
-        # if current_step % sum_no_of_batches:
-        #     end_time  = time.time()
-        #     print('Time spent on epoch {}: {}')
+        # early stopping
+        if sum_loss < best_loss:
+            stopping_step = 0
+            best_loss = sum_loss
+        else:
+            stopping_step += 1
+        if stopping_step >= FLAGS.patience:
+            print("Early stopping is trigger at epoch: {} loss:{}".format(epoch, sum_loss))
+            saver.save(sess, checkpoint_prefix, global_step=current_step)
+            tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph"+str(epoch)+".pb", as_text=False)
+            print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(epoch, max_validation_acc, checkpoint_prefix))
+            exit(0)
+
+        end_time = time.time()
+        print('Time spent on epoch {}: {:.2f} seconds'.format(epoch, end_time-start_time))
+
+    print("End of training.")
+    saver.save(sess, checkpoint_prefix, global_step=current_step)
+    tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph" + str(epoch) + ".pb", as_text=False)
+    print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(nn, max_validation_acc, checkpoint_prefix))

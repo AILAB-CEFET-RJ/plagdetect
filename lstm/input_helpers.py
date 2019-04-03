@@ -335,7 +335,7 @@ class InputHelper(object):
 		gc.collect()
 		return dict(zip(ids, embeddings)), vocab_processor
 
-	def build_datasets(self, cursor, total_size, batch_size, percent_dev, percent_test):
+	def build_datasets(self, cursor, total_size, batch_size, percent_dev, percent_test, auto_chunk=True, folder='ds'):
 		start_time = time.time()
 		print('Building dataset files...')
 		test_batch_size = int(round(batch_size * percent_test / 100.0)) # 307
@@ -345,18 +345,23 @@ class InputHelper(object):
 		if batch_size > test_batch_size + dev_batch_size + train_batch_size:
 			train_batch_size += batch_size - (test_batch_size + dev_batch_size + train_batch_size)
 
+		if auto_chunk: # Let h5py figure out the best chunking
+			chunks = True
+		else: # set chunk size to match batch size
+			chunks = (batch_size, 3)
+
 		cursor.execute('select * from dataset_id')
 
-		if os.path.exists('ds'):
-			shutil.rmtree('ds', ignore_errors=True)
-		os.mkdir('ds')
-		with h5.File('ds/train.hdf5', 'w') as ftrain, h5.File('ds/dev.hdf5', 'w') as fdev, h5.File('ds/test.hdf5', 'w') as ftest:
+		if os.path.exists(folder):
+			shutil.rmtree(folder, ignore_errors=True)
+		os.mkdir(folder)
+		with h5.File(folder+'/train.hdf5', 'w') as ftrain, h5.File(folder+'/dev.hdf5', 'w') as fdev, h5.File(folder+'/test.hdf5', 'w') as ftest:
 			train_set = ftrain.create_dataset("chunked_train", shape=(0, 3), dtype='int', maxshape=(None, 3),
-																				chunks=(batch_size, 3), compression="gzip", compression_opts=9)
+																				chunks=chunks, compression="gzip", compression_opts=9)
 			dev_set = fdev.create_dataset("chunked_dev", shape=(0, 3), dtype='int', maxshape=(None, 3),
-																		chunks=(batch_size, 3), compression="gzip", compression_opts=9)
+																		chunks=chunks, compression="gzip", compression_opts=9)
 			test_set = ftest.create_dataset("chunked_test", shape=(0, 3), dtype='int', maxshape=(None, 3),
-																			chunks=(batch_size, 3), compression="gzip", compression_opts=9)
+																			chunks=chunks, compression="gzip", compression_opts=9)
 			train_count, dev_count, test_count = 0, 0, 0
 			for i in range(int(math.ceil(float(total_size) / batch_size))):
 				batch = cursor.fetchmany(batch_size)
