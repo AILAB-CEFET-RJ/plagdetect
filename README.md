@@ -53,7 +53,8 @@ In order to download this library, go to the `scripts` directory and run the fol
 In order to make run scripts properly, make sure to add the root directory of this project 
 to PYTHONPATH variable. On Linux, it can be done by the following commands:
 
-```echo 'export PYTHONPATH=$PYTHONPATH:/path/to/this/repository' >> ^/.bashrc```
+```echo 'export PYTHONPATH=$PYTHONPATH:/path/to/this/repository' >> ~/.bashrc```
+
 ```source ~/.bashrc```
 
 Note that you have to replace */path/to/this/repository/* to the actual path in your system.
