@@ -39,6 +39,7 @@ tf.flags.DEFINE_integer("num_epochs", 300, "Number of training epochs (default: 
 tf.flags.DEFINE_integer("evaluate_every", 1, "Evaluate model on dev set after this many steps (default: 1)")
 tf.flags.DEFINE_integer("checkpoint_every", 50, "Save model after this many steps (default: 50)")
 tf.flags.DEFINE_integer("patience", 20, "Patience for early stopping (default: 20)")
+tf.flags.DEFINE_integer("log_every", 100000, "Log results every X steps")
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
@@ -224,7 +225,8 @@ with tf.Graph().as_default():
             }
         _, step, loss, accuracy, dist, sim, summaries = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.distance, siameseModel.temp_sim, train_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
-        print("TRAIN {}: step {}, loss {:g}, f1 {:g}".format(time_str, step/sum_no_of_batches, loss, accuracy))
+        if step % FLAGS.log_every == 0:
+            print("TRAIN {}: step {}, loss {:g}, f1 {:g}".format(time_str, step, loss, accuracy))
         train_summary_writer.add_summary(summaries, step)
         # print(y_batch, dist, sim)
 
@@ -248,7 +250,8 @@ with tf.Graph().as_default():
             }
         step, loss, accuracy, sim, summaries = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim, dev_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
-        print("DEV {}: step {}, loss {:g}, f1 {:g}".format(time_str, step/sum_no_of_batches, loss, accuracy))
+        if step % FLAGS.log_every == 0:
+            print("DEV {}: step {}, loss {:g}, f1 {:g}".format(time_str, step/sum_no_of_batches, loss, accuracy))
         dev_summary_writer.add_summary(summaries, step)
         return accuracy, loss
 
