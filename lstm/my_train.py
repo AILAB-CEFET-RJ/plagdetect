@@ -251,7 +251,7 @@ with tf.Graph().as_default():
         step, loss, accuracy, sim, summaries = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim, dev_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
         if step % FLAGS.log_every == 0:
-            print("DEV {}: step {}, loss {:g}, f1 {:g}".format(time_str, step/sum_no_of_batches, loss, accuracy))
+            print("DEV {}: step {}, loss {:g}, f1 {:g}".format(time_str, step, loss, accuracy))
         dev_summary_writer.add_summary(summaries, step)
         return accuracy, loss
 
