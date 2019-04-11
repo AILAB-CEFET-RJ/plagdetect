@@ -39,7 +39,7 @@ tf.flags.DEFINE_integer("num_epochs", 300, "Number of training epochs (default: 
 tf.flags.DEFINE_integer("evaluate_every", 1, "Evaluate model on dev set after this many steps (default: 1)")
 tf.flags.DEFINE_integer("checkpoint_every", 50, "Save model after this many steps (default: 50)")
 tf.flags.DEFINE_integer("patience", 20, "Patience for early stopping (default: 20)")
-tf.flags.DEFINE_integer("log_every", 100000, "Log results every X steps")
+tf.flags.DEFINE_integer("log_every", 100000, "Log results every X steps (default: 100000)")
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
