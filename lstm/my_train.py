@@ -39,7 +39,7 @@ tf.flags.DEFINE_integer("num_epochs", 300, "Number of training epochs (default: 
 tf.flags.DEFINE_integer("evaluate_every", 1, "Evaluate model on dev set after this many steps (default: 1)")
 tf.flags.DEFINE_integer("checkpoint_every", 50, "Save model after this many steps (default: 50)")
 tf.flags.DEFINE_integer("patience", 20, "Patience for early stopping (default: 20)")
-tf.flags.DEFINE_integer("log_every", 100000, "Log results every X steps (default: 100000)")
+tf.flags.DEFINE_integer("log_every", 1000, "Log results every X steps (default: 100000)")
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
@@ -53,7 +53,6 @@ print("")
 if FLAGS.database==None:
     print("Input Files List is empty. use --database argument.")
     exit()
-
 
 max_document_length=15
 #max_document_length=sys.maxint # attempt to read all words in a document
@@ -205,7 +204,7 @@ with tf.Graph().as_default():
         gc.collect()
         sess.run(siameseModel.W.assign(initW))
 
-    def train_step(x1_batch, x2_batch, y_batch):
+    def train_step(x1_batch, x2_batch, y_batch, epoch, batch):
         """
         A single training step
         """
@@ -225,12 +224,12 @@ with tf.Graph().as_default():
             }
         _, step, loss, accuracy, dist, sim, summaries = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.distance, siameseModel.temp_sim, train_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
-        if step % FLAGS.log_every == 0:
-            print("TRAIN {}: step {}, loss {:g}, f1 {:g}".format(time_str, step, loss, accuracy))
+        if batch*(epoch+1) % FLAGS.log_every == 0:
+            print("TRAIN {}: epoch/step {}/{}, loss {:g}, f1 {:g}".format(time_str, epoch, batch, loss, accuracy))
         train_summary_writer.add_summary(summaries, step)
         # print(y_batch, dist, sim)
 
-    def dev_step(x1_batch, x2_batch, y_batch):
+    def dev_step(x1_batch, x2_batch, y_batch, epoch, batch):
         """
         A single training step
         """ 
@@ -250,8 +249,8 @@ with tf.Graph().as_default():
             }
         step, loss, accuracy, sim, summaries = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim, dev_summary_op],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
-        if step % FLAGS.log_every == 0:
-            print("DEV {}: step {}, loss {:g}, f1 {:g}".format(time_str, step, loss, accuracy))
+        if batch*(epoch+1) % FLAGS.log_every == 0:
+            print("DEV {}: epoch/batch {}/{}, loss {:g}, f1 {:g}".format(time_str, epoch, batch, loss, accuracy))
         dev_summary_writer.add_summary(summaries, step)
         return accuracy, loss
 
@@ -278,7 +277,7 @@ with tf.Graph().as_default():
             x1_batch,x2_batch, y_batch = zip(*train_batch)
             if len(y_batch)<1:
                 continue
-            train_step(x1_batch, x2_batch, y_batch)
+            train_step(x1_batch, x2_batch, y_batch, epoch, nn)
             sum_acc=0.0
             sum_loss=0.0
 
@@ -291,7 +290,7 @@ with tf.Graph().as_default():
                 x1_dev_b,x2_dev_b,y_dev_b = zip(*dev_batch)
                 if len(y_dev_b)<1:
                     continue
-                acc, loss = dev_step(x1_dev_b, x2_dev_b, y_dev_b)
+                acc, loss = dev_step(x1_dev_b, x2_dev_b, y_dev_b, epoch, nn)
                 sum_acc = sum_acc + acc
                 sum_loss = sum_loss + loss
             print("")
