@@ -335,7 +335,7 @@ class InputHelper(object):
 		gc.collect()
 		return dict(zip(ids, embeddings)), vocab_processor
 
-	def build_datasets(self, cursor, total_size, batch_size, percent_dev, percent_test, auto_chunk=True, folder='ds'):
+	def build_datasets(self, cursor, total_size, batch_size, percent_dev, percent_test, auto_chunk=True, folder='ds', intra_only=True):
 		start_time = time.time()
 		print('Building dataset files...')
 		test_batch_size = int(round(batch_size * percent_test / 100.0)) # 307
@@ -350,7 +350,9 @@ class InputHelper(object):
 		else: # set chunk size to match batch size
 			chunks = (batch_size, 3)
 
-		cursor.execute('select * from dataset_id')
+		table = 'dataset_id_intra' if intra_only else 'dataset_id'
+
+		cursor.execute('select * from ' + table)
 
 		if os.path.exists(folder):
 			shutil.rmtree(folder, ignore_errors=True)
