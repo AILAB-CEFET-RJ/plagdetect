@@ -7,25 +7,19 @@ import time
 import datetime
 from tensorflow.contrib import learn
 from input_helpers import InputHelper
-import sklearn.metrics as sk
-import sqlite3 as lite
-
 # Parameters
 # ==================================================
 
 # Eval Parameters
-tf.flags.DEFINE_integer("batch_size", 1024, "Batch Size (default: 1024)")
-tf.flags.DEFINE_string("checkpoint_dir", "runs/1547805488/checkpoints/", "Checkpoint directory from training run")
-tf.flags.DEFINE_string("eval_filepath", "ds/dev.hdf5", "Evaluate on this data (Default: None)")
-tf.flags.DEFINE_string("vocab_filepath", "runs/1547805488/checkpoints/vocab", "Load training time vocabulary (Default: None)")
-tf.flags.DEFINE_string("model", "runs/1547805488/model-4000", "Load trained model checkpoint (Default: None)")
+tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
+tf.flags.DEFINE_string("checkpoint_dir", "", "Checkpoint directory from training run")
+tf.flags.DEFINE_string("eval_filepath", "validation.txt0", "Evaluate on this data (Default: None)")
+tf.flags.DEFINE_string("vocab_filepath", "runs/1557358111/checkpoints/vocab", "Load training time vocabulary (Default: None)")
+tf.flags.DEFINE_string("model", "runs/1557358111/checkpoints/model-6048", "Load trained model checkpoint (Default: None)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
-
-# My Parameters
-tf.flags.DEFINE_integer()
 
 
 FLAGS = tf.flags.FLAGS
@@ -41,12 +35,7 @@ if FLAGS.eval_filepath==None or FLAGS.vocab_filepath==None or FLAGS.model==None 
 
 # load data and map id-transform based on training time vocabulary
 inpH = InputHelper()
-# x1_test,x2_test,y_test = inpH.getTestDataSet(FLAGS.eval_filepath, FLAGS.vocab_filepath, 30)
-max_document_length=15
-
-db = lite.connect(FLAGS.training_files)
-cursor = db.cursor()
-emb_map, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
+x1_test,x2_test,y_test = inpH.getTestDataSet(FLAGS.eval_filepath, FLAGS.vocab_filepath, 30)
 
 print("\nEvaluating...\n")
 
@@ -97,11 +86,3 @@ with graph.as_default():
             print ex
         correct_predictions = float(np.mean(all_d == y_test))
         print("Accuracy: {:g}".format(correct_predictions))
-
-        #y_true = np.argmax(all_y)
-        print "Precision", sk.precision_score(y_test, all_d)
-        print "Recall", sk.recall_score(y_test, all_d)
-        print "f1_score", sk.f1_score(y_test, all_d)
-        print "confusion_matrix"
-        print sk.confusion_matrix(y_test, all_d)
-        fpr, tpr, tresholds = sk.roc_curve(y_test, all_d)

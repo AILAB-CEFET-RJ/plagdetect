@@ -15,6 +15,7 @@ from random import random
 import sqlite3 as lite
 import sys
 import math
+import pickle
 
 # Parameters
 # ==================================================
@@ -169,6 +170,9 @@ with tf.Graph().as_default():
 
     # Write vocabulary
     vocab_processor.save(os.path.join(checkpoint_dir, "vocab"))
+
+    # Write ids_mapping
+    pickle.dump(emb_map, open(os.path.join(checkpoint_dir + 'ids_mapping'), 'w'))
 
     # Initialize all variables
     sess.run(tf.global_variables_initializer())

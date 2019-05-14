@@ -3,7 +3,7 @@ import re
 import itertools
 from collections import Counter
 import numpy as np
-import time, memory_profiler as mem_profile
+import time#, memory_profiler as mem_profile
 import h5py as h5
 import gc
 from tensorflow.contrib import learn
@@ -304,31 +304,31 @@ class InputHelper(object):
 
 	def getEmbeddingsMap(self, cursor, max_document_length):
 		print('Loading sentences')
-		print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
+		# print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
 		ids, sentences = map(list, zip(*datagen.get_sentences_list(cursor)))
-		print('Memory (after): {}Mb\n'.format(mem_profile.memory_usage()))
+		# print('Memory (after): {}Mb\n'.format(mem_profile.memory_usage()))
 
 		# Build vocabulary
 		print("Building vocabulary")
 		vocab_processor = MyVocabularyProcessor(max_document_length, min_frequency=0, is_char_based=False)
 		#sentences_array = np.asarray(sentences) # line in which memory error occurs with full list of datasets (size = 6620242)
 
-		print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
+		# print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
 		start_time = time.time()
 		vocab_processor.fit_transform(sentences)
 		end_time = time.time()
 		print('Time elapsed on vocabulary fitting (fit_transform): {} seconds.'.format(round(end_time-start_time, 2)))
-		print('Memory (after): {}Mb'.format(mem_profile.memory_usage()))
+		# print('Memory (after): {}Mb'.format(mem_profile.memory_usage()))
 
 		print("Length of loaded vocabulary ={}".format(len(vocab_processor.vocabulary_)))
 		print('Vocabulary created!\n')
 
-		print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
+		# print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
 		start_time = time.time()
 		embeddings = np.asarray(list(vocab_processor.transform(sentences)))
 		end_time = time.time()
 		print('Time elapsed on sentences to word ids (transform): {} seconds.'.format(round(end_time-start_time, 2)))
-		print('Memory (after): {}Mb\n'.format(mem_profile.memory_usage()))
+		# print('Memory (after): {}Mb\n'.format(mem_profile.memory_usage()))
 
 		print('Embeddings generated in memory!')
 
@@ -485,11 +485,12 @@ class InputHelper(object):
 		y = np.asarray(y)
 		return zip(x1, x2, y)
 
-	def my_get_counts(self, cursor):
+	def my_get_counts(self, cursor, intra_only=True):
 
 		print('Counting train dataset')
 		start_time = time.time()
-		cursor.execute('select count(*) from dataset_id')
+		table = 'dataset_id_intra' if intra_only else 'dataset_id'
+		cursor.execute('select count(*) from ' + table)
 		end_time = time.time()
 		print('Time elapsed on counting training dataset: {} seconds.'.format(round(end_time - start_time, 2)))
 		count = cursor.fetchall()[0][0]
