@@ -9,7 +9,7 @@ dataset-generated2/*
 playground/*
 info/*
 errors/*
-lstm/ds/*
+lstm/ds*/*
 lstm/runs/*
 *.db
 *-journal

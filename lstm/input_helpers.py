@@ -335,7 +335,7 @@ class InputHelper(object):
 		gc.collect()
 		return dict(zip(ids, embeddings)), vocab_processor
 
-	def build_datasets(self, cursor, total_size, batch_size, percent_dev, percent_test, auto_chunk=True, folder='ds', intra_only=True):
+	def build_datasets(self, cursor, total_size, batch_size, percent_dev, percent_test, auto_chunk=True, folder='ds', intra_only=True, num_docs=0, log_every=1000):
 		start_time = time.time()
 		print('Building dataset files...')
 		test_batch_size = int(round(batch_size * percent_test / 100.0)) # 307
@@ -349,10 +349,10 @@ class InputHelper(object):
 			chunks = True
 		else: # set chunk size to match batch size
 			chunks = (batch_size, 3)
+		
+		sql = self.get_dataset_sql(intra_only, num_docs)
 
-		table = 'dataset_id_intra' if intra_only else 'dataset_id'
-
-		cursor.execute('select * from ' + table)
+		cursor.execute(sql)
 
 		if os.path.exists(folder):
 			shutil.rmtree(folder, ignore_errors=True)
@@ -397,13 +397,14 @@ class InputHelper(object):
 				percent_complete = min(percent_complete, 100.0)
 
 				end_time = time.time()
-				print('Adding batch to dataset. {} complete. Time elapsed: {} seconds.'.format(round(percent_complete, 2),
+				if i % log_every == 0:
+					print('Adding batch to dataset. {} complete. Time elapsed: {} seconds.'.format(round(percent_complete, 2),
 																																											 round(end_time - start_time, 2)))
 
 			print('Dataset files built!')
 			end_time = time.time()
 			print('Time elapsed on dataset creation: {} seconds.'.format(round(end_time - start_time, 2)))
-			with open('ds/count', 'w') as f:
+			with open(folder+'/count', 'w') as f:
 				print('\t'.join(('train', 'dev', 'test')) + '\n' + '\t'.join((str(train_count), str(dev_count), str(test_count))))
 				f.write('\t'.join((str(train_count), str(dev_count), str(test_count))))
 			return train_count, dev_count, test_count
@@ -485,14 +486,46 @@ class InputHelper(object):
 		y = np.asarray(y)
 		return zip(x1, x2, y)
 
-	def my_get_counts(self, cursor, intra_only=True):
+	def my_get_counts(self, cursor, intra_only=True, num_docs=0):
 
 		print('Counting train dataset')
+		
+		sql = self.get_count_sql(intra_only, num_docs)
+		
 		start_time = time.time()
-		table = 'dataset_id_intra' if intra_only else 'dataset_id'
-		cursor.execute('select count(*) from ' + table)
+		cursor.execute(sql)
 		end_time = time.time()
 		print('Time elapsed on counting training dataset: {} seconds.'.format(round(end_time - start_time, 2)))
 		count = cursor.fetchall()[0][0]
 
 		return count
+	
+	def get_dataset_sql(self, intra_only=True, num_docs=0):
+		if intra_only: # combine sentences from same document only
+			sql = '''select s1.id as id1, s2.id as id2,
+					NOT ((s1.isplag AND NOT s2.isplag) OR (NOT s1.isplag AND s2.isplag))
+					as same_style FROM sentence as s1, sentence as s2 WHERE
+					(s1.fk_article_id = s2.fk_article_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
+		else: # combine sentences between documents of same author
+			sql = '''select s1.id as id1, s2.id as id2,
+					NOT ((s1.isplag AND NOT s2.isplag) OR (NOT s1.isplag AND s2.isplag))
+					as same_style FROM sentence as s1, sentence as s2 WHERE
+					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
+		
+		if num_docs > 0:
+			sql += 'AND s1.fk_article_id < %d' % num_docs
+		
+		return sql
+		
+	def get_count_sql(self, intra_only=True, num_docs=0):
+		if intra_only: # combine sentences from same document only
+			sql = '''select  count(*) FROM sentence as s1, sentence as s2 WHERE
+					(s1.fk_article_id = s2.fk_article_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
+		else: # combine sentences between documents of same author
+			sql = '''select count(*) FROM sentence as s1, sentence as s2 WHERE
+					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
+
+		if num_docs > 0:
+			sql += 'AND s1.fk_article_id < %d' % num_docs
+			
+		return sql
