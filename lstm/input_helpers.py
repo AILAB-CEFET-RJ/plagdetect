@@ -302,10 +302,10 @@ class InputHelper(object):
 		gc.collect()
 		return x1, x2, y
 
-	def getEmbeddingsMap(self, cursor, max_document_length):
+	def getEmbeddingsMap(self, cursor, max_document_length, num_docs):
 		print('Loading sentences')
 		# print('Memory (before): {}Mb'.format(mem_profile.memory_usage()))
-		ids, sentences = map(list, zip(*datagen.get_sentences_list(cursor)))
+		ids, sentences = map(list, zip(*datagen.get_sentences_list(cursor, num_docs)))
 		# print('Memory (after): {}Mb\n'.format(mem_profile.memory_usage()))
 
 		# Build vocabulary
@@ -407,6 +407,10 @@ class InputHelper(object):
 			with open(folder+'/count', 'w') as f:
 				print('\t'.join(('train', 'dev', 'test')) + '\n' + '\t'.join((str(train_count), str(dev_count), str(test_count))))
 				f.write('\t'.join((str(train_count), str(dev_count), str(test_count))))
+			if num_docs > 0:
+				with open(folder+'/num_docs', 'w') as f:
+					print('num_docs: {}'.format(num_docs))
+					f.write(str(num_docs))
 			return train_count, dev_count, test_count
 
 	def get_counts(self, ds_folder):
@@ -475,15 +479,18 @@ class InputHelper(object):
 					yield shuffled_data
 
 	def ids_to_embeddings(self, emb_map, rows):
-		x1, x2, y = zip(*rows)
-		x1 = list(x1)
-		x2 = list(x2)
-		for i in range(len(y)):
-			x1[i] = emb_map[x1[i]]
-			x2[i] = emb_map[x2[i]]
-		x1 = np.asarray(x1)
-		x2 = np.asarray(x2)
-		y = np.asarray(y)
+		try:
+			x1, x2, y = zip(*rows)
+			x1 = list(x1)
+			x2 = list(x2)
+			for i in range(len(y)):
+				x1[i] = emb_map[x1[i]]
+				x2[i] = emb_map[x2[i]]
+			x1 = np.asarray(x1)
+			x2 = np.asarray(x2)
+			y = np.asarray(y)
+		except ValueError as e:
+			print(e)
 		return zip(x1, x2, y)
 
 	def my_get_counts(self, cursor, intra_only=True, num_docs=0):
@@ -513,7 +520,7 @@ class InputHelper(object):
 					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
 		
 		if num_docs > 0:
-			sql += 'AND s1.fk_article_id < %d' % num_docs
+			sql += 'AND s1.fk_article_id <= %d' % num_docs
 		
 		return sql
 		
@@ -526,6 +533,15 @@ class InputHelper(object):
 					(s1.fk_author_id = s2.fk_author_id) AND (s1.id < s2.id) AND NOT (s1.isplag = 1 AND s1.isplag = s2.isplag)'''
 
 		if num_docs > 0:
-			sql += 'AND s1.fk_article_id < %d' % num_docs
+			sql += 'AND s1.fk_article_id <= %d' % num_docs
 			
 		return sql
+	
+	def get_num_docs(self, folder):
+		num_docs = None
+		filepath = folder+'/num_docs'
+		try:
+			 num_docs = int(open(filepath, 'r').read())
+		except IOError:
+			print('File {} could not be read.'.format(filepath))
+		return num_docs

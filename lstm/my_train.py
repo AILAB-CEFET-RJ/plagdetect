@@ -46,13 +46,17 @@ tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device 
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
 FLAGS = tf.flags.FLAGS
+
+batch_size = FLAGS.batch_size
+num_epochs = FLAGS.num_epochs
+
 print("\nParameters:")
 for attr, value in sorted(FLAGS.flag_values_dict().iteritems()):
     print("{}={}".format(attr.upper(), value))
 print("")
 
 if FLAGS.database==None:
-    print("Input Files List is empty. use --database argument.")
+    print("Input Files List is empty. use -database argument.")
     exit()
 
 max_document_length=15
@@ -61,12 +65,11 @@ inpH = InputHelper()
 #train_set, dev_set, vocab_processor,sum_no_of_batches = inpH.getDataSets(FLAGS.database,max_document_length, 10,
 #                                                                         FLAGS.batch_size, FLAGS.is_char_based)
 
-batch_size = FLAGS.batch_size
-num_epochs = FLAGS.num_epochs
+num_docs = inpH.get_num_docs(FLAGS.training_folder)
 
 db = lite.connect(FLAGS.database)
 cursor = db.cursor()
-emb_map, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length)
+emb_map, vocab_processor = inpH.getEmbeddingsMap(cursor, max_document_length, num_docs)
 train_count, dev_count = inpH.get_counts(FLAGS.training_folder)[0:2]
 total_count = train_count + dev_count
 
@@ -153,13 +156,13 @@ with tf.Graph().as_default():
 
     # Train Summaries
     train_summary_op = tf.summary.merge([loss_summary, acc_summary, grad_summaries_merged])
-    train_summary_dir = os.path.join(out_dir, "summaries", "train")
-    train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
+    # train_summary_dir = os.path.join(out_dir, "summaries", "train")
+    # train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
 
     # Dev summaries
     dev_summary_op = tf.summary.merge([loss_summary, acc_summary])
-    dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
-    dev_summary_writer = tf.summary.FileWriter(dev_summary_dir, sess.graph)
+    # dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
+    # dev_summary_writer = tf.summary.FileWriter(dev_summary_dir, sess.graph)
 
     # Checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
     checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
@@ -167,12 +170,17 @@ with tf.Graph().as_default():
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     saver = tf.train.Saver(tf.global_variables(), max_to_keep=100)
+    
+    # my summary dir
+    summary_dir = os.path.join(out_dir, "summaries")
+    if not os.path.exists(summary_dir):
+        os.makedirs(summary_dir)
 
     # Write vocabulary
     vocab_processor.save(os.path.join(checkpoint_dir, "vocab"))
 
     # Write ids_mapping
-    pickle.dump(emb_map, open(os.path.join(checkpoint_dir + 'ids_mapping'), 'w'))
+    pickle.dump(emb_map, open(os.path.join(checkpoint_dir + '/ids_mapping'), 'w'))
 
     # Initialize all variables
     sess.run(tf.global_variables_initializer())
@@ -230,8 +238,9 @@ with tf.Graph().as_default():
         time_str = datetime.datetime.now().isoformat()
         if batch*(epoch+1) % FLAGS.log_every == 0:
             print("TRAIN {}: epoch/step {}/{}, loss {:g}, f1 {:g}".format(time_str, epoch, batch, loss, accuracy))
-        train_summary_writer.add_summary(summaries, step)
+        #train_summary_writer.add_summary(summaries, step)
         # print(y_batch, dist, sim)
+        return loss, accuracy
 
     def dev_step(x1_batch, x2_batch, y_batch, epoch, batch):
         """
@@ -255,8 +264,8 @@ with tf.Graph().as_default():
         time_str = datetime.datetime.now().isoformat()
         if batch*(epoch+1) % FLAGS.log_every == 0:
             print("DEV {}: epoch/batch {}/{}, loss {:g}, f1 {:g}".format(time_str, epoch, batch, loss, accuracy))
-        dev_summary_writer.add_summary(summaries, step)
-        return accuracy, loss
+        #dev_summary_writer.add_summary(summaries, step)
+        return loss, accuracy
 
     # Generate batches
     # batches=inpH.batch_batch_iter(
@@ -265,7 +274,7 @@ with tf.Graph().as_default():
     train_batches = train_set
     dev_batches = dev_set
     ptr=0
-    max_validation_acc=0.0
+    max_validation_f1=0.0
     stopping_step = 0
     best_loss = sys.float_info.max
 
@@ -273,6 +282,8 @@ with tf.Graph().as_default():
         start_time = time.time()
 
         current_step = tf.train.global_step(sess, global_step)
+        losses = []
+        f1s = []
 
         for nn in xrange(sum_no_of_batches):
             train_batch = train_batches.next()
@@ -281,11 +292,22 @@ with tf.Graph().as_default():
             x1_batch,x2_batch, y_batch = zip(*train_batch)
             if len(y_batch)<1:
                 continue
-            train_step(x1_batch, x2_batch, y_batch, epoch, nn)
-            sum_acc=0.0
-            sum_loss=0.0
+            loss, f1 = train_step(x1_batch, x2_batch, y_batch, epoch, nn)
+            losses.append(loss)
+            f1s.append(f1)
+          
+        epoch_f1 = np.mean(np.nan_to_num(f1s))
+        epoch_loss = np.mean(np.nan_to_num(losses))
+        
+        with open(os.path.join(summary_dir, 'train_summary'), 'a') as f:
+            f.write('\t'.join((str(epoch), str(epoch_loss), str(epoch_f1))) + '\n')
+            
+        
 
         if epoch % FLAGS.evaluate_every == 0:
+            losses = []
+            f1s = []
+            
             print("\nEvaluation:")
             for _ in xrange(dev_no_of_batches):
                 dev_batch = dev_batches.next()
@@ -294,28 +316,34 @@ with tf.Graph().as_default():
                 x1_dev_b,x2_dev_b,y_dev_b = zip(*dev_batch)
                 if len(y_dev_b)<1:
                     continue
-                acc, loss = dev_step(x1_dev_b, x2_dev_b, y_dev_b, epoch, nn)
-                sum_acc = sum_acc + acc
-                sum_loss = sum_loss + loss
-            print("")
+                loss, f1 = dev_step(x1_dev_b, x2_dev_b, y_dev_b, epoch, nn)
+                losses.append(loss)
+                f1s.append(f1)
+
+            epoch_f1 = np.mean(np.nan_to_num(f1s))
+            epoch_loss = np.mean(np.nan_to_num(losses))
+
+            with open(os.path.join(summary_dir, 'dev_summary'), 'a') as f:
+                f.write('\t'.join((str(epoch), str(epoch_loss), str(epoch_f1))) + '\n')
+        
         if epoch % FLAGS.checkpoint_every == 0:
-            if sum_acc >= max_validation_acc:
-                max_validation_acc = sum_acc
+            if epoch_f1 >= max_validation_f1:
+                max_validation_f1 = epoch_f1
                 saver.save(sess, checkpoint_prefix, global_step=current_step)
                 tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph"+str(epoch)+".pb", as_text=False)
-                print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(nn, max_validation_acc, checkpoint_prefix))
+                print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(nn, max_validation_f1, checkpoint_prefix))
 
         # early stopping
-        if sum_loss < best_loss:
+        if epoch_loss < best_loss:
             stopping_step = 0
-            best_loss = sum_loss
+            best_loss = epoch_loss
         else:
             stopping_step += 1
         if stopping_step >= FLAGS.patience:
-            print("Early stopping is trigger at epoch: {} loss:{}".format(epoch, sum_loss))
+            print("Early stopping is trigger at epoch: {} loss:{}".format(epoch, epoch_loss))
             saver.save(sess, checkpoint_prefix, global_step=current_step)
             tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph"+str(epoch)+".pb", as_text=False)
-            print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(epoch, max_validation_acc, checkpoint_prefix))
+            print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(epoch, max_validation_f1, checkpoint_prefix))
             exit(0)
 
         end_time = time.time()
@@ -324,4 +352,4 @@ with tf.Graph().as_default():
     print("End of training.")
     saver.save(sess, checkpoint_prefix, global_step=current_step)
     tf.train.write_graph(sess.graph.as_graph_def(), checkpoint_prefix, "graph" + str(epoch) + ".pb", as_text=False)
-    print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(nn, max_validation_acc, checkpoint_prefix))
+    print("Saved model {} with sum_accuracy={} checkpoint to {}\n".format(nn, max_validation_f1, checkpoint_prefix))

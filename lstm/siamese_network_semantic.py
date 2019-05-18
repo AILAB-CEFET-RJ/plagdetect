@@ -67,7 +67,7 @@ class SiameseLSTMw2v(object):
         f1 = 2 * precision * recall / (precision + recall)
 
         f1 = tf.reduce_mean(f1)
-        print(f1)
+        # print(f1)
 
 
         return f1

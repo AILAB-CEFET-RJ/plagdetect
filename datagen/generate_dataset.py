@@ -20,13 +20,17 @@ def generate_file(f, author):
 			f.write(('\t'.join([line[1], line_ahead[1], same_style]) + '\n').encode('utf-8'))
 	f.flush()
 
-def get_sentences_hashmap(c):
+def get_sentences_hashmap(c, num_docs):
 	sql = 'SELECT id, fragment FROM sentence'
+	if(num_docs):
+		sql += ' WHERE sentence.fk_article_id <= {}'.format(num_docs)
 	c.execute(sql)
 	return dict(c.fetchall())
 
-def get_sentences_list(c):
+def get_sentences_list(c, num_docs):
 	sql = 'SELECT id, fragment FROM sentence'
+	if(num_docs):
+		sql += ' WHERE sentence.fk_article_id <= {}'.format(num_docs)
 	c.execute(sql)
 	return c.fetchall()
 
