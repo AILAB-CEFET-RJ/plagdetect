@@ -136,15 +136,15 @@ with tf.Graph().as_default():
     tr_op_set = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
     print("defined training_ops")
     # Keep track of gradient values and sparsity (optional)
-    grad_summaries = []
-    for g, v in grads_and_vars:
-        if g is not None:
-            grad_hist_summary = tf.summary.histogram("{}/grad/hist".format(v.name), g)
-            sparsity_summary = tf.summary.scalar("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
-            grad_summaries.append(grad_hist_summary)
-            grad_summaries.append(sparsity_summary)
-    grad_summaries_merged = tf.summary.merge(grad_summaries)
-    print("defined gradient summaries")
+    # grad_summaries = []
+    # for g, v in grads_and_vars:
+    #     if g is not None:
+    #         grad_hist_summary = tf.summary.histogram("{}/grad/hist".format(v.name), g)
+    #         sparsity_summary = tf.summary.scalar("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
+    #         grad_summaries.append(grad_hist_summary)
+    #         grad_summaries.append(sparsity_summary)
+    # grad_summaries_merged = tf.summary.merge(grad_summaries)
+    # print("defined gradient summaries")
     # Output directory for models and summaries
     timestamp = str(int(time.time()))
     out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
@@ -155,12 +155,12 @@ with tf.Graph().as_default():
     acc_summary = tf.summary.scalar("accuracy", siameseModel.accuracy)
 
     # Train Summaries
-    train_summary_op = tf.summary.merge([loss_summary, acc_summary, grad_summaries_merged])
+    # train_summary_op = tf.summary.merge([loss_summary, acc_summary, grad_summaries_merged])
     # train_summary_dir = os.path.join(out_dir, "summaries", "train")
     # train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
 
     # Dev summaries
-    dev_summary_op = tf.summary.merge([loss_summary, acc_summary])
+    # dev_summary_op = tf.summary.merge([loss_summary, acc_summary])
     # dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
     # dev_summary_writer = tf.summary.FileWriter(dev_summary_dir, sess.graph)
 
@@ -234,7 +234,7 @@ with tf.Graph().as_default():
                 siameseModel.input_y: y_batch,
                 siameseModel.dropout_keep_prob: FLAGS.dropout_keep_prob,
             }
-        _, step, loss, accuracy, dist, sim, summaries = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.distance, siameseModel.temp_sim, train_summary_op],  feed_dict)
+        _, step, loss, accuracy, dist, sim = sess.run([tr_op_set, global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.distance, siameseModel.temp_sim],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
         if batch*(epoch+1) % FLAGS.log_every == 0:
             print("TRAIN {}: epoch/step {}/{}, loss {:g}, f1 {:g}".format(time_str, epoch, batch, loss, accuracy))
@@ -260,7 +260,7 @@ with tf.Graph().as_default():
                 siameseModel.input_y: y_batch,
                 siameseModel.dropout_keep_prob: 1.0,
             }
-        step, loss, accuracy, sim, summaries = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim, dev_summary_op],  feed_dict)
+        step, loss, accuracy, sim = sess.run([global_step, siameseModel.loss, siameseModel.accuracy, siameseModel.temp_sim],  feed_dict)
         time_str = datetime.datetime.now().isoformat()
         if batch*(epoch+1) % FLAGS.log_every == 0:
             print("DEV {}: epoch/batch {}/{}, loss {:g}, f1 {:g}".format(time_str, epoch, batch, loss, accuracy))
