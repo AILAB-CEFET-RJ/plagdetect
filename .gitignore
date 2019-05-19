@@ -11,11 +11,15 @@ info/*
 errors/*
 lstm/ds*/*
 lstm/runs/*
+test/*
+
 *.db
 *-journal
 *.pyc
 *.vec
 *.txt*
+*.png
+*.csv
 
 correlation_clusters/bin/*
 correlation_clusters/.temp/*

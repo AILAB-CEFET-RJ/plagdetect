@@ -24,10 +24,10 @@ tf.flags.DEFINE_boolean("is_char_based", False, "is character based syntactic si
                                                "if false then word embedding based semantic similarity is used."
                                                "(default: False)")
 
-tf.flags.DEFINE_string("word2vec_model", "wiki.simple.vec", "word2vec pre-trained embeddings file (default: wiki.simple.vec)")
+tf.flags.DEFINE_string("word2vec_model", "enwiki_20180420_100d.txt", "word2vec pre-trained embeddings file (default: enwiki_20180420_100d.txt)")
 tf.flags.DEFINE_string("word2vec_format", "text", "word2vec pre-trained embeddings file format (bin/text/textgz)(default: text)")
 
-tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 300)")
+tf.flags.DEFINE_integer("embedding_dim", 100, "Dimensionality of character embedding (default: 100)")
 tf.flags.DEFINE_float("dropout_keep_prob", 1.0, "Dropout keep probability (default: 1.0)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
 tf.flags.DEFINE_string("database", "../plag.db", "training file (default: ../plag.db)")
@@ -320,11 +320,11 @@ with tf.Graph().as_default():
                 losses.append(loss)
                 f1s.append(f1)
 
-            epoch_f1 = np.mean(np.nan_to_num(f1s))
-            epoch_loss = np.mean(np.nan_to_num(losses))
+            train_epoch_f1 = np.mean(np.nan_to_num(f1s))
+            train_epoch_loss = np.mean(np.nan_to_num(losses))
 
             with open(os.path.join(summary_dir, 'dev_summary'), 'a') as f:
-                f.write('\t'.join((str(epoch), str(epoch_loss), str(epoch_f1))) + '\n')
+                f.write('\t'.join((str(epoch), str(train_epoch_loss), str(train_epoch_f1))) + '\n')
         
         if epoch % FLAGS.checkpoint_every == 0:
             if epoch_f1 >= max_validation_f1:
@@ -347,7 +347,7 @@ with tf.Graph().as_default():
             exit(0)
 
         end_time = time.time()
-        print('Time spent on epoch {}: {:.2f} seconds'.format(epoch, end_time-start_time))
+        print('Time spent on epoch {}: {:.2f} seconds. TRAIN - loss: {:f}, f1: {:f} | DEV - loss: {:f}, f1: {:f}'.format(epoch, end_time-start_time, train_epoch_loss, train_epoch_f1, epoch_loss, epoch_f1))
 
     print("End of training.")
     saver.save(sess, checkpoint_prefix, global_step=current_step)
